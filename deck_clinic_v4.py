@@ -182,11 +182,12 @@ if target_pdf and analyze_btn:
             with col2:
                 st.subheader("📊 PM Scorecard")
                 
-                # 1. Metrics
+               # 1. Metrics (Updated to match V4 Prompt keys)
                 s1, s2, s3 = st.columns(3)
-                s1.metric("Strategy", f"{data['scores']['Strategic_Fit']}/100")
-                s2.metric("Clarity", f"{data['scores']['Clarity']}/100")
-                s3.metric("Persuasion", f"{data['scores']['Persuasion']}/100")
+                # Note: These keys MUST match what is in the Prompt JSON structure
+                s1.metric("Logic (MECE)", f"{data['scores'].get('Strategic_Logic', 0)}/100")
+                s2.metric("Brevity", f"{data['scores'].get('Clarity_and_Brevity', 0)}/100")
+                s3.metric("Flow", f"{data['scores'].get('Narrative_Flow', 0)}/100")
                 
                 # 2. Bar Chart
                 chart_df = pd.DataFrame({
