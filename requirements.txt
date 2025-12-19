@@ -9,3 +9,4 @@ pypdf
 pandas
 langchain-text-splitters
 langchain-text-splitters
+langchain-text-splitters
