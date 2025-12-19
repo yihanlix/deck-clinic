@@ -11,7 +11,10 @@ from langchain_community.document_loaders import PyPDFLoader
 
 # --- 1. 页面基础配置 ---
 st.set_page_config(
-    page_title="Deck Cgoogle.api_core.exceptions.NotFound: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
+    page_title="Deck Clinic",
+    page_icon="📝",
+    layout="wide"
+)
 Traceback:
 File "/mount/src/deck-clinic/deck_clinic_v4.py", line 155, in <module>
     response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
