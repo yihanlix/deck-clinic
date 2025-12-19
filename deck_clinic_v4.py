@@ -114,40 +114,56 @@ if target_pdf and analyze_btn:
 
     # C. Core Prompt
     prompt = f"""
-    You are the Head of Product Management in a Top Tech company reviewing a proposal draft.
+    You are a VP of Product Strategy who spent 10 years at Amazon and McKinsey.
+    Your standard for review is: "Ruthless Logic, Simple Language."
     
-    ### REFERENCE (Gold Standard Examples):
+    ### REFERENCE CONTEXT (Gold Standard):
     {knowledge_context}
     
     ### DRAFT TO REVIEW:
     {draft_text[:50000]} 
     
+    ### ANALYSIS FRAMEWORK:
+    1. **The "Amazon" Clarity Test**: 
+       - Is the language simple? (Target Grade 8 reading level).
+       - No big words (e.g., use "use" instead of "leverage", "do" instead of "execute").
+       - No long sentences. If a sentence has >2 commas, it is too long.
+       - Data must be insightful, not just descriptive.
+       
+    2. **The "McKinsey" Structure Test (MECE)**:
+       - Is the logic Mutually Exclusive and Collectively Exhaustive?
+       - Does the argument follow the Pyramid Principle? (Answer first, then arguments).
+       - **The "Golden Thread"**: Does Page 1 (Problem) directly link to the Final Page (Solution/Ask)?
+       
     ### INSTRUCTIONS:
-    1. Compare the Draft against the style, tone, and logic of the Reference.
-    2. Output the result in **STRICT JSON FORMAT** only. Do not add markdown or intro text.
+    - If you see "fluff" or "corporate jargon", mark it as a Critical Issue.
+    - If the logic breaks between sections, mark it as a Critical Issue.
+    - Rewrite suggestions MUST be shorter and punchier than the original.
     
-    ### JSON STRUCTURE (Fill this in):
+    ### OUTPUT:
+    Output the result in **STRICT JSON FORMAT** only.
+    
     {{
         "scores": {{
-            "Strategic_Fit": <int 0-100>,
-            "Clarity": <int 0-100>,
-            "Persuasion": <int 0-100>
+            "Strategic_Logic": <int 0-100 (Is it MECE? Is the data insightful?)>,
+            "Clarity_and_Brevity": <int 0-100 (Is it simple English?)>,
+            "Narrative_Flow": <int 0-100 (Does p1 connect to end?)>
         }},
-        "executive_summary_feedback": "<string: Summary of the biggest gap>",
+        "executive_summary_feedback": "<string: One blunt sentence on the biggest logical gap>",
         "critical_issues": [
             {{
-                "section": "<string: Identify Section Header>",
-                "issue": "<string: What is wrong>",
-                "fix": "<string: Actionable advice>"
+                "section": "<string>",
+                "issue": "<string: Focus on logic gaps or complexity>",
+                "fix": "<string: The Amazon-style fix>"
             }},
             {{
                 "section": "<string>", "issue": "<string>", "fix": "<string>"
             }}
         ],
         "rewrite_showcase": {{
-            "original_text": "<string: Quote a weak paragraph>",
-            "improved_version": "<string: Rewrite it in Top Tech PM style>",
-            "why": "<string: Explain the reasoning>"
+            "original_text": "<string: Find a sentence with complex words/long structure>",
+            "improved_version": "<string: Rewrite it in Simple, Data-Backed English>",
+            "why": "<string: Explain why this is stronger>"
         }}
     }}
     """
