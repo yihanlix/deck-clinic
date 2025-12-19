@@ -9,70 +9,56 @@ from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 
-# --- 1. CONFIGURATION & CYBER-TECH UI ---
+# --- 1. CONFIGURATION ---
 st.set_page_config(
-    page_title="Deck Clinic V5",
-    page_icon="🧬",
+    page_title="Deck Clinic V5: Retro Lab",
+    page_icon="💾",
     layout="wide"
 )
 
-# Custom "High-Tech" CSS - NOW WITH FIXED TEXT COLORS
+# --- RETRO LAB CSS (Stable & Clean) ---
 st.markdown("""
 <style>
-    /* 1. Force Background and Text Colors */
-    .stApp {
-        background-color: #0E1117;
-        color: #E0E0E0; /* Light Gray Text for readability */
+    /* 1. Retro Typewriter Font */
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+    
+    * {
+        font-family: 'Space Mono', monospace;
     }
     
-    /* 2. Global Font: Monospace for that 'Terminal' feel */
-    body, .stMarkdown, p, h1, h2, h3, li, .stMetricLabel {
-        font-family: 'Courier New', Courier, monospace !important;
-        color: #E0E0E0 !important;
-    }
-    
-    /* 3. Neon Accents for Metrics */
-    div[data-testid="stMetricValue"] {
-        font-size: 2.2rem;
-        color: #00FFC2 !important; /* Neon Cyan */
-        text-shadow: 0 0 10px rgba(0, 255, 194, 0.5);
+    /* 2. Clean Headers */
+    h1, h2, h3 {
         font-weight: 700;
+        letter-spacing: -1px;
     }
     
-    /* 4. Card/Container Styling */
+    /* 3. Metric Cards (Simple Box) */
+    div[data-testid="stMetricValue"] {
+        font-size: 1.8rem;
+        background-color: #f0f2f6;
+        padding: 5px 10px;
+        border-radius: 5px;
+        border-left: 5px solid #ff4b4b; /* Streamlit Red Accent */
+    }
+    
+    /* 4. Expander Borders */
     .stExpander {
-        border: 1px solid #333;
-        border-radius: 4px;
-        background-color: #161B22; /* Slightly lighter dark for contrast */
+        border: 2px solid #000;
+        border-radius: 0px;
     }
     
-    /* 5. Fix Text Inside Expanders (This was likely the black-on-black issue) */
-    .streamlit-expanderContent p, .streamlit-expanderContent li {
-        color: #E0E0E0 !important;
-    }
-    
-    /* 6. Custom Buttons */
+    /* 5. Buttons (Retro Rectangles) */
     div.stButton > button {
-        background-color: #1E1E1E;
-        color: #00FFC2;
-        border: 1px solid #00FFC2;
-        transition: all 0.3s ease;
+        border-radius: 0px;
+        border: 2px solid #000;
+        font-weight: bold;
+        box-shadow: 2px 2px 0px #000; /* Drop shadow effect */
+        transition: all 0.1s;
     }
     div.stButton > button:hover {
-        background-color: #00FFC2;
-        color: #000000 !important; /* Black text on hover */
-        box-shadow: 0 0 15px rgba(0, 255, 194, 0.6);
+        box-shadow: 4px 4px 0px #000;
+        transform: translate(-1px, -1px);
     }
-    
-    /* 7. Code Blocks */
-    code {
-        color: #FF79C6 !important; /* Pink for code highlights */
-        background-color: #282A36 !important;
-    }
-    
-    /* 8. Hide Streamlit Branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -83,7 +69,7 @@ except (FileNotFoundError, KeyError):
     api_key = os.environ.get("GOOGLE_API_KEY")
 
 if not api_key:
-    st.error("🚨 SYSTEM HALTED: API Key Missing.")
+    st.error("🚨 SYSTEM ERROR: API Key Missing.")
     st.stop()
 
 os.environ["GOOGLE_API_KEY"] = api_key
@@ -99,22 +85,22 @@ PERSIST_DIRECTORY = "deck_memory_db"
 
 # --- 4. SIDEBAR: CONTROL PANEL ---
 with st.sidebar:
-    st.title("🎛️ CONTROL PANEL")
+    st.title("🎛️ SETTINGS")
     
     # Context Selector
     doc_type = st.selectbox(
-        "Protocol Selection",
+        "DIAGNOSTIC PROTOCOL",
         ["Strategy Deck (McKinsey/Amazon)", "Product Spec (Technical)", "Exec Update (Brief)"]
     )
     
     st.divider()
     
     # Knowledge Base Uploader
-    st.caption("SYSTEM: Neural Knowledge Base")
+    st.caption("📂 KNOWLEDGE BASE")
     uploaded_file = st.file_uploader("Upload 'Gold Standard' PDF", type="pdf")
     
-    if uploaded_file and st.button("INITIATE TRAINING"):
-        with st.spinner("...Ingesting Data Streams..."):
+    if uploaded_file and st.button("TRAIN SYSTEM"):
+        with st.spinner("Indexing..."):
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
                 tmp_file.write(uploaded_file.read())
                 tmp_file_path = tmp_file.name
@@ -127,19 +113,18 @@ with st.sidebar:
             vector_db = Chroma.from_documents(docs, embeddings, persist_directory=PERSIST_DIRECTORY)
             try: vector_db.persist()
             except: pass
-            st.toast(f"✅ System Upgraded: {len(docs)} chunks added.")
+            st.success(f"System Index Updated: {len(docs)} chunks.")
 
 # --- 5. MAIN INTERFACE ---
-st.title("🧬 DECK CLINIC: V5")
-st.markdown(f"**active_protocol:** `{doc_type}`")
-st.caption(f"**model_core:** `gemini-flash-latest`") 
+st.title("💾 DECK CLINIC V5")
+st.caption(f"PROTOCOL: {doc_type} | CORE: gemini-flash-latest") 
 
 col1, col2 = st.columns([2, 3]) 
 
 with col1:
-    st.markdown("### 📂 INPUT SOURCE")
+    st.markdown("### INPUT FEED")
     target_pdf = st.file_uploader("Upload Draft PDF", type="pdf", key="target")
-    analyze_btn = st.button(">> EXECUTE DIAGNOSTIC", type="primary", use_container_width=True)
+    analyze_btn = st.button("RUN DIAGNOSTIC", type="primary", use_container_width=True)
 
 if target_pdf and analyze_btn:
     # A. File Processing
@@ -152,7 +137,7 @@ if target_pdf and analyze_btn:
     draft_text = " ".join([d.page_content for d in draft_docs])
 
     # B. RAG Retrieval
-    with st.spinner("...Accessing Neural Database..."):
+    with st.spinner("Retrieving Context..."):
         try:
             vector_db = Chroma(persist_directory=PERSIST_DIRECTORY, embedding_function=embeddings)
             results = vector_db.similarity_search(draft_text, k=3)
@@ -224,8 +209,7 @@ if target_pdf and analyze_btn:
     """
 
     # D. Generation
-    with st.spinner("...Processing Logic Matrix..."):
-        # UPDATED: Using the latest alias as requested
+    with st.spinner("Processing Logic Matrix..."):
         model = genai.GenerativeModel('gemini-flash-latest')
         response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
         
@@ -234,7 +218,7 @@ if target_pdf and analyze_btn:
         data = json.loads(response.text)
         
         with col2:
-            st.markdown("### 📊 DIAGNOSTICS")
+            st.markdown("### SCORECARD")
             s1, s2, s3 = st.columns(3)
             s1.metric("LOGIC", f"{data['scores'].get('Logic',0)}")
             s2.metric("CLARITY", f"{data['scores'].get('Clarity',0)}")
@@ -242,8 +226,8 @@ if target_pdf and analyze_btn:
         
         st.divider()
         
-        # --- NEW TABS LAYOUT ---
-        tab1, tab2, tab3 = st.tabs(["🔗 STORY FLOW", "🛑 CRITICAL GAPS", "✨ REWRITE SHOWCASE"])
+        # --- TABS LAYOUT ---
+        tab1, tab2, tab3 = st.tabs(["STORY FLOW", "CRITICAL GAPS", "REWRITE LAB"])
         
         with tab1:
             st.markdown("#### The Narrative Check (Pyramid Principle)")
@@ -253,16 +237,16 @@ if target_pdf and analyze_btn:
                     st.code(f"{i+1}. {line}", language="markdown")
             
             if data['scores'].get('Logic', 0) < 75:
-                st.error("⚠️ ALERT: Narrative thread appears broken. Re-order sections.")
+                st.error("⚠️ NARRATIVE THREAD BROKEN")
             else:
-                st.success("✅ Narrative thread is coherent.")
+                st.success("✅ NARRATIVE THREAD STABLE")
         
         with tab2:
-            st.info(f"**EXECUTIVE SUMMARY:** {data['executive_summary']}")
+            st.info(f"**SUMMARY:** {data['executive_summary']}")
             for item in data['critical_issues']:
                 with st.expander(f"📍 {item['section']}"):
-                    st.write(f"**Error:** {item['issue']}")
-                    st.markdown(f"**Correction:** `{item['fix']}`")
+                    st.write(f"**ISSUE:** {item['issue']}")
+                    st.markdown(f"**FIX:** `{item['fix']}`")
         
         with tab3:
             c1, c2 = st.columns(2)
@@ -272,7 +256,7 @@ if target_pdf and analyze_btn:
             with c2:
                 st.caption("OPTIMIZED")
                 st.code(data['rewrite_showcase']['improved_version'], language="text")
-            st.markdown(f"> **Why:** {data['rewrite_showcase']['why']}")
+            st.markdown(f"> **LOGIC:** {data['rewrite_showcase']['why']}")
 
     except Exception as e:
         st.error(f"Data Stream Parsing Error: {e}")
