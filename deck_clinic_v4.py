@@ -6,62 +6,18 @@ import json
 import pandas as pd
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import Chroma
+# Updated import for new LangChain versions
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 
-# --- 1. 页面基础配置 ---
+# --- 1. Basic Page Configuration ---
 st.set_page_config(
-    page_title="Deck Clinic",
-    page_icon="📝",
-    layout="wide"
-)
-Traceback:
-File "/mount/src/deck-clinic/deck_clinic_v4.py", line 155, in <module>
-    response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
-File "/home/adminuser/venv/lib/python3.13/site-packages/google/generativeai/generative_models.py", line 331, in generate_content
-    response = self._client.generate_content(
-        request,
-        **request_options,
-    )
-File "/home/adminuser/venv/lib/python3.13/site-packages/google/ai/generativelanguage_v1beta/services/generative_service/client.py", line 835, in generate_content
-    response = rpc(
-        request,
-    ...<2 lines>...
-        metadata=metadata,
-    )
-File "/home/adminuser/venv/lib/python3.13/site-packages/google/api_core/gapic_v1/method.py", line 131, in __call__
-    return wrapped_func(*args, **kwargs)
-File "/home/adminuser/venv/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py", line 294, in retry_wrapped_func
-    return retry_target(
-        target,
-    ...<3 lines>...
-        on_error=on_error,
-    )
-File "/home/adminuser/venv/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py", line 156, in retry_target
-    next_sleep = _retry_error_helper(
-        exc,
-    ...<6 lines>...
-        timeout,
-    )
-File "/home/adminuser/venv/lib/python3.13/site-packages/google/api_core/retry/retry_base.py", line 214, in _retry_error_helper
-    raise final_exc from source_exc
-File "/home/adminuser/venv/lib/python3.13/site-packages/google/api_core/retry/retry_unary.py", line 147, in retry_target
-    result = target()
-File "/home/adminuser/venv/lib/python3.13/site-packages/google/api_core/timeout.py", line 130, in func_with_timeout
-    return func(*args, **kwargs)
-File "/home/adminuser/venv/lib/python3.13/site-packages/google/api_core/grpc_helpers.py", line 77, in error_remapped_callable
- # CORRECT LINE (Option A: If this is inside set_page_config)
-page_title="Deck Clinic V3: PM Edition",
-
-# OR
-
-# CORRECT LINE (Option B: If this is a st.title call)
-st.title("Deck Clinic V3: PM Edition")
-    page_icon="🧠", 
+    page_title="Deck Clinic V3: PM Edition",
+    page_icon="🧠",
     layout="wide"
 )
 
-# 自定义 CSS：让评分卡看起来更专业
+# Custom CSS for scorecard
 st.markdown("""
 <style>
     div[data-testid="stMetricValue"] {
@@ -73,20 +29,20 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. 安全连接 Gemini ---
+# --- 2. Security & API Connection ---
 try:
     api_key = st.secrets["GOOGLE_API_KEY"]
 except (FileNotFoundError, KeyError):
     api_key = os.environ.get("GOOGLE_API_KEY")
 
 if not api_key:
-    st.error("🚨 严重错误：未找到 API Key，请检查 Secrets 设置。")
+    st.error("🚨 Critical Error: API Key not found. Please check Secrets settings.")
     st.stop()
 
 os.environ["GOOGLE_API_KEY"] = api_key
 genai.configure(api_key=api_key)
 
-# --- 3. 核心引擎 (带缓存) ---
+# --- 3. Core Engine (Cached) ---
 @st.cache_resource
 def get_embedding_model():
     return GoogleGenerativeAIEmbeddings(model="models/embedding-001")
@@ -94,7 +50,7 @@ def get_embedding_model():
 embeddings = get_embedding_model()
 PERSIST_DIRECTORY = "deck_memory_db"
 
-# --- 4. 侧边栏：知识库 (Reference) ---
+# --- 4. Sidebar: Knowledge Base ---
 with st.sidebar:
     st.header("📚 Knowledge Base")
     st.caption("Role: Head of Product Management")
@@ -110,7 +66,7 @@ with st.sidebar:
             loader = PyPDFLoader(tmp_file_path)
             raw_docs = loader.load()
             
-            # 这里的切片是为了向量检索，不是给 LLM 读的
+            # Splitting text for vector retrieval
             text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=500)
             docs = text_splitter.split_documents(raw_docs)
             
@@ -119,14 +75,18 @@ with st.sidebar:
                 embedding=embeddings,
                 persist_directory=PERSIST_DIRECTORY
             )
-            vector_db.persist()
+            # Persist call is automatic in newer Chroma versions, but keeping for safety
+            try:
+                vector_db.persist()
+            except:
+                pass
             st.success(f"✅ Learned from {len(docs)} chunks of knowledge!")
 
-# --- 5. 主界面：提案诊断 ---
+# --- 5. Main Interface: Deck Review ---
 st.title("🏥 Deck Clinic: Strategic Review")
 st.markdown("Your **AI Product Manager** will review your draft and generate a structured scorecard.")
 
-col1, col2 = st.columns([2, 3]) # 左边传文件，右边看图表
+col1, col2 = st.columns([2, 3]) 
 
 with col1:
     st.subheader("📄 Input Draft")
@@ -134,17 +94,16 @@ with col1:
     analyze_btn = st.button("🚀 Run PM Review", type="primary", use_container_width=True)
 
 if target_pdf and analyze_btn:
-    # A. 准备文件
+    # A. Prepare File
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
         tmp_file.write(target_pdf.read())
         draft_path = tmp_file.name
     
     loader = PyPDFLoader(draft_path)
     draft_docs = loader.load()
-    # 拼接全文
     draft_text = " ".join([d.page_content for d in draft_docs])
 
-    # B. 检索参考资料 (RAG)
+    # B. Retrieve Context (RAG)
     with st.spinner("1/3 Retrieving Knowledge..."):
         try:
             vector_db = Chroma(persist_directory=PERSIST_DIRECTORY, embedding_function=embeddings)
@@ -153,7 +112,7 @@ if target_pdf and analyze_btn:
         except:
             knowledge_context = "General Top Tech Company Standards"
 
-    # C. 核心 Prompt (结合了你的 Head of PM 人设 + JSON 强制格式)
+    # C. Core Prompt
     prompt = f"""
     You are the Head of Product Management in a Top Tech company reviewing a proposal draft.
     
@@ -161,7 +120,7 @@ if target_pdf and analyze_btn:
     {knowledge_context}
     
     ### DRAFT TO REVIEW:
-    {draft_text[:500000]} 
+    {draft_text[:50000]} 
     
     ### INSTRUCTIONS:
     1. Compare the Draft against the style, tone, and logic of the Reference.
@@ -193,38 +152,37 @@ if target_pdf and analyze_btn:
     }}
     """
 
-    # D. 生成与解析
+    # D. Generate & Parse
     with st.spinner("2/3 Analyzing Logic Flow..."):
-        model = genai.GenerativeModel('gemini-flash-latest')
-        # 强制请求 JSON (Gemini 1.5 特性)
+        # Corrected model name to ensure JSON mode works
+        model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
         
     with st.spinner("3/3 Rendering Dashboard..."):
         try:
-            # 解析 JSON
             data = json.loads(response.text)
             
-            # --- 展示区域 (Right Column) ---
+            # --- Display Area (Right Column) ---
             with col2:
                 st.subheader("📊 PM Scorecard")
                 
-                # 1. 数字指标
+                # 1. Metrics
                 s1, s2, s3 = st.columns(3)
                 s1.metric("Strategy", f"{data['scores']['Strategic_Fit']}/100")
                 s2.metric("Clarity", f"{data['scores']['Clarity']}/100")
                 s3.metric("Persuasion", f"{data['scores']['Persuasion']}/100")
                 
-                # 2. 柱状图 (Visual)
+                # 2. Bar Chart
                 chart_df = pd.DataFrame({
                     "Metric": list(data['scores'].keys()),
                     "Score": list(data['scores'].values())
                 })
                 st.bar_chart(chart_df, x="Metric", y="Score", color="#FF4B4B")
 
-            # --- 详细报告区 (Bottom) ---
+            # --- Detailed Report (Bottom) ---
             st.divider()
             
-            # Tab 1: 关键问题
+            # Tab 1: Critical Issues
             st.subheader("🛑 Critical Gaps & Fixes")
             st.info(f"**PM Summary:** {data['executive_summary_feedback']}")
             
@@ -233,7 +191,7 @@ if target_pdf and analyze_btn:
                     st.write(f"**Problem:** {item['issue']}")
                     st.success(f"**Action:** {item['fix']}")
 
-            # Tab 2: 重写示范
+            # Tab 2: Rewrite Showcase
             st.divider()
             st.subheader("✨ Before vs After Showcase")
             c_old, c_new = st.columns(2)
