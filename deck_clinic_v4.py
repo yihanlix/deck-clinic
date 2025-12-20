@@ -11,7 +11,7 @@ from langchain_community.document_loaders import PyPDFLoader
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(
-    page_title="Deck Clinic V5: Retro Lab",
+    page_title="Deck Clinic V6: Narrative Engine",
     page_icon="💾",
     layout="wide"
 )
@@ -45,6 +45,7 @@ st.markdown("""
     .stExpander {
         border: 2px solid #000;
         border-radius: 0px;
+        margin-bottom: 10px;
     }
     
     /* 5. Buttons (Retro Rectangles) */
@@ -58,6 +59,14 @@ st.markdown("""
     div.stButton > button:hover {
         box-shadow: 4px 4px 0px #000;
         transform: translate(-1px, -1px);
+    }
+    
+    /* 6. Comparison Box for Rewrites */
+    .rewrite-box {
+        background-color: #e6fffa;
+        padding: 15px;
+        border-left: 5px solid #00b894;
+        margin-top: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -116,7 +125,7 @@ with st.sidebar:
             st.success(f"System Index Updated: {len(docs)} chunks.")
 
 # --- 5. MAIN INTERFACE ---
-st.title("💾 DECK CLINIC V5")
+st.title("💾 DECK CLINIC V6")
 st.caption(f"PROTOCOL: {doc_type} | CORE: gemini-flash-latest") 
 
 col1, col2 = st.columns([2, 3]) 
@@ -170,6 +179,7 @@ if target_pdf and analyze_btn:
         2. **Brevity:** If it can be said in 5 words, do not use 10.
         """
 
+    # --- UPDATED PROMPT STRUCTURE (V6) ---
     prompt = f"""
     {base_instruction}
     
@@ -180,11 +190,12 @@ if target_pdf and analyze_btn:
     {draft_text[:50000]} 
     
     ### INSTRUCTIONS:
-    1. **STEP 1 (HIDDEN BRAINSTORM):** Read the text. specificially look for logical gaps. Ask yourself: "Does the problem prove the solution?" "Is the data specific?"
+    1. **STEP 1 (HIDDEN BRAINSTORM):** Read the text. Specifically look for logical gaps. Ask yourself: "Does the problem prove the solution?" "Is the data specific?"
     2. **STEP 2 (SCORING):** Only assign scores AFTER you have written the critique.
-    3. **STEP 3 (Headline & Narrative Audit):**
-    - Critique the current headlines: Do they tell a story if read in isolation? Are they descriptive or generic?
-    - Suggest a **"Revised Headline Flow"**: A list of rewritten headlines that guide the reader logically from the problem to the solution, ensuring strong narrative continuity between sections.
+    3. **STEP 3 (EXTRACTION):** Extract the current headlines to identify the existing narrative.
+    4. **STEP 4 (Headline & Narrative Audit):**
+       - Critique the current headlines: Do they tell a story if read in isolation? Are they descriptive or generic?
+       - Suggest a **"Revised Headline Flow"**: A list of rewritten headlines that guide the reader logically from the problem to the solution.
     
     ### JSON STRUCTURE:
     {{
@@ -196,11 +207,14 @@ if target_pdf and analyze_btn:
         }},
         "executive_summary": "<string: Brutal one-sentence summary based on the reasoning_log>",
         "narrative_check": {{
+             "original_headlines": [
+                 "<string: Extracted Headline 1>",
+                 "<string: Extracted Headline 2>"
+             ],
              "critique": "<string: Critique of the current storytelling flow>",
              "revised_headlines": [
-             "<string: Slide/Section 1 Headline>",
-             "<string: Slide/Section 2 Headline>",
-             "<string: Slide/Section 3 Headline>"
+                 "<string: Improved Headline 1>",
+                 "<string: Improved Headline 2>"
              ]
         }},
         "section_deep_dive": [
@@ -226,45 +240,70 @@ if target_pdf and analyze_btn:
         with col2:
             st.markdown("### SCORECARD")
             s1, s2, s3 = st.columns(3)
-            s1.metric("LOGIC", f"{data['scores'].get('Logic',0)}")
-            s2.metric("CLARITY", f"{data['scores'].get('Clarity',0)}")
-            s3.metric("IMPACT", f"{data['scores'].get('Impact',0)}")
+            # Use safe .get() to avoid errors if keys are missing
+            s1.metric("LOGIC", f"{data.get('scores', {}).get('Logic', 0)}")
+            s2.metric("CLARITY", f"{data.get('scores', {}).get('Clarity', 0)}")
+            s3.metric("IMPACT", f"{data.get('scores', {}).get('Impact', 0)}")
         
         st.divider()
+        st.info(f"**EXECUTIVE SUMMARY:** {data.get('executive_summary', 'No summary generated.')}")
         
-        # --- TABS LAYOUT ---
-        tab1, tab2, tab3 = st.tabs(["STORY FLOW", "CRITICAL GAPS", "REWRITE LAB"])
+        # --- NEW TABS LAYOUT ---
+        tab1, tab2 = st.tabs(["STORY FLOW", "DEEP DIVE & REWRITES"])
         
+        # --- TAB 1: NARRATIVE FLOW ---
         with tab1:
             st.markdown("#### The Narrative Check (Pyramid Principle)")
-            st.caption("Does the story hold together reading ONLY these lines?")
-            with st.container(border=True):
-                for i, line in enumerate(data.get('narrative_check', [])):
-                    st.code(f"{i+1}. {line}", language="markdown")
             
-            if data['scores'].get('Logic', 0) < 75:
+            nav_data = data.get('narrative_check', {})
+            
+            # 1. Critique
+            st.markdown(f"> *{nav_data.get('critique', 'No critique available.')}*")
+            st.divider()
+
+            # 2. Side-by-Side Comparison
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.caption("🔴 ORIGINAL FLOW")
+                for line in nav_data.get('original_headlines', []):
+                    st.text(f"• {line}")
+            
+            with col_b:
+                st.caption("🟢 OPTIMIZED FLOW")
+                for line in nav_data.get('revised_headlines', []):
+                    st.markdown(f"**• {line}**")
+
+            if data.get('scores', {}).get('Logic', 0) < 75:
                 st.error("⚠️ NARRATIVE THREAD BROKEN")
             else:
                 st.success("✅ NARRATIVE THREAD STABLE")
         
+        # --- TAB 2: SECTIONS DEEP DIVE ---
         with tab2:
-            st.info(f"**SUMMARY:** {data['executive_summary']}")
-            for item in data['critical_issues']:
-                with st.expander(f"📍 {item['section']}"):
-                    st.write(f"**ISSUE:** {item['issue']}")
-                    st.markdown(f"**FIX:** `{item['fix']}`")
-        
-        with tab3:
-            c1, c2 = st.columns(2)
-            with c1:
-                st.caption("ORIGINAL")
-                st.code(data['rewrite_showcase']['original_text'], language="text")
-            with c2:
-                st.caption("OPTIMIZED")
-                st.code(data['rewrite_showcase']['improved_version'], language="text")
-            st.markdown(f"> **LOGIC:** {data['rewrite_showcase']['why']}")
+            st.markdown("#### Section-by-Section Analysis")
+            
+            # Iterate through the combined list
+            deep_dive_items = data.get('section_deep_dive', [])
+            
+            if not deep_dive_items:
+                st.warning("No deep dive issues found.")
+            
+            for i, item in enumerate(deep_dive_items):
+                with st.expander(f"📍 {item.get('target_section', 'Unknown Section')}", expanded=(i==0)):
+                    
+                    # The Problem
+                    st.markdown(f"**❌ ISSUE:** {item.get('issue', 'No issue description.')}")
+                    
+                    # The Fix (Highlighted Box)
+                    st.markdown('<div class="rewrite-box">', unsafe_allow_html=True)
+                    st.caption("✅ IMPROVED VERSION")
+                    st.markdown(f"{item.get('improved_version', 'N/A')}")
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    
+                    # The Why
+                    st.markdown(f"**🧠 LOGIC:** *{item.get('why', 'N/A')}*")
 
     except Exception as e:
         st.error(f"Data Stream Parsing Error: {e}")
         with st.expander("DEBUG DATA"):
-            st.text(response.text)
+            st.code(response.text)
