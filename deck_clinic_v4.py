@@ -146,8 +146,8 @@ with st.sidebar:
             st.success(f"System Index Updated: {len(docs)} chunks.")
 
 # --- 6. MAIN INTERFACE ---
-st.title(" 🎠DECK Playground: Your Powerful Deck GP")
-st.caption(f"PROTOCOL: {doc_type} | CORE: gemini-flash-latest") 
+st.title(" 🎠DECK Playground")
+st.caption(f"PROTOCOL: {doc_type} | CORE: gemini-flash-latest | EMBEDDING: models/embedding-001 | VECTOR DB: Chroma | LANGCHAIN ｜builded by Olivia Li") 
 
 col1, col2 = st.columns([2, 3]) 
 
