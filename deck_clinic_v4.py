@@ -4,11 +4,36 @@ import os
 import tempfile
 import json
 import pandas as pd
+import csv
+import datetime
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 
+def log_interaction(doc_type, scores, exec_summary):
+    # Define the file name
+    log_file = "clinic_logs.csv"
+    
+    # Check if file exists to write headers
+    file_exists = os.path.isfile(log_file)
+    
+    with open(log_file, mode='a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        
+        # Write Header if new file
+        if not file_exists:
+            writer.writerow(["Timestamp", "Doc Type", "Logic Score", "Clarity Score", "Impact Score", "Summary"])
+            
+        # Write Data
+        writer.writerow([
+            datetime.datetime.now(),
+            doc_type,
+            scores.get('Logic', 0),
+            scores.get('Clarity', 0),
+            scores.get('Impact', 0),
+            exec_summary
+        ])
 # --- 1. CONFIGURATION ---
 st.set_page_config(
     page_title="Deck Clinic: Approval Accelerator",
@@ -144,6 +169,20 @@ with st.sidebar:
             try: vector_db.persist()
             except: pass
             st.success(f"System Index Updated: {len(docs)} chunks.")
+
+    st.divider()
+    # Analytics Viewer
+    st.caption("📊 ANALYTICS")
+    if st.checkbox("Show Logic Logs"):
+        if os.path.exists("clinic_logs.csv"):
+            df = pd.read_csv("clinic_logs.csv")
+            st.dataframe(df)
+            
+            # AI PM Metric: Average Logic Score
+            avg_logic = df["Logic Score"].mean()
+            st.write(f"**Average Logic Score:** {avg_logic:.1f}/100")
+        else:
+            st.warning("No logs found yet. Run a diagnostic first!")
 
 # --- 6. MAIN INTERFACE ---
 st.title(" 🎠DECK Playground")
@@ -288,6 +327,13 @@ if target_pdf and analyze_btn:
         
         st.divider()
         st.info(f"**EXECUTIVE SUMMARY:** {data.get('executive_summary', 'No summary generated.')}")
+
+        # ✅ NEW: Log this run to the database
+        log_interaction(
+            doc_type=doc_type,
+            scores=data.get('scores', {}),
+            exec_summary=data.get('executive_summary', 'N/A')
+        )
         
         # --- NEW TABS LAYOUT ---
         tab1, tab2 = st.tabs(["STORY FLOW", "🔬 DEEP DIVE & REWRITES"])
