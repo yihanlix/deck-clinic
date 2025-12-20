@@ -153,7 +153,7 @@ col1, col2 = st.columns([2, 3])
 
 with col1:
     # ✅ These lines are indented exactly 4 spaces
-    st.markdown("### INPUT FEED")
+    st.markdown("### UPLOAD DRAFT DECK")
     target_pdf = st.file_uploader("Upload Draft PDF", type="pdf", key="target")
     analyze_btn = st.button("RUN DIAGNOSTIC", type="primary", use_container_width=True)
 
