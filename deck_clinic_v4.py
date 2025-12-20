@@ -171,18 +171,31 @@ with st.sidebar:
             st.success(f"System Index Updated: {len(docs)} chunks.")
 
     st.divider()
-    # Analytics Viewer
-    st.caption("📊 ANALYTICS")
-    if st.checkbox("Show Logic Logs"):
-        if os.path.exists("clinic_logs.csv"):
-            df = pd.read_csv("clinic_logs.csv")
-            st.dataframe(df)
+    # 🔒 ADMIN ACCESS ONLY for analysis panel
+    with st.expander("🔐 ADMIN PANEL"):
+        admin_pass = st.text_input("Enter Admin Key", type="password")
+        
+        # Hardcoded password for now (Simple MVP solution)
+        if admin_pass == "gemini2025": 
+            st.success("ACCESS GRANTED")
             
-            # AI PM Metric: Average Logic Score
-            avg_logic = df["Logic Score"].mean()
-            st.write(f"**Average Logic Score:** {avg_logic:.1f}/100")
-        else:
-            st.warning("No logs found yet. Run a diagnostic first!")
+            if st.checkbox("Show Logic Logs"):
+                if os.path.exists("clinic_logs.csv"):
+                    df = pd.read_csv("clinic_logs.csv")
+                    # Mask the Executive Summary for privacy in the table view
+                    st.dataframe(df)
+                    
+                    avg_logic = df["Logic Score"].mean()
+                    st.write(f"**Average Logic Score:** {avg_logic:.1f}/100")
+                    
+                    # Button to clear logs (Maintenance)
+                    if st.button("Clear Logs"):
+                        os.remove("clinic_logs.csv")
+                        st.rerun()
+                else:
+                    st.warning("No logs found.")
+        elif admin_pass:
+            st.error("Access Denied")
 
 # --- 6. MAIN INTERFACE ---
 st.title(" 🎠DECK Playground")
