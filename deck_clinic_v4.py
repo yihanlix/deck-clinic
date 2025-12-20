@@ -141,7 +141,7 @@ with st.sidebar:
 
 # --- 6. MAIN INTERFACE ---
 st.title(" 🎠DECK Playground (Vision)")
-st.caption(f"PROTOCOL: {doc_type} | CORE: gemini-flash-latest") 
+st.caption(f"Built by Olivia Li | PROTOCOL: {doc_type} | CORE: gemini-flash-latest | EMBEDDING: embedding-001 | Langchain") 
 
 col1, col2 = st.columns([2, 3]) 
 
