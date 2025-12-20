@@ -16,44 +16,37 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- RETRO LAB CSS (Stable & Clean) ---
+# --- 2. CSS STYLING (Retro + Clinic Cards) ---
 st.markdown("""
 <style>
-    /* 1. Retro Typewriter Font */
+    /* A. Retro Typewriter Font */
     @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
     
     * {
         font-family: 'Space Mono', monospace;
     }
     
-    /* 2. Clean Headers */
-    h1, h2, h3 {
+    /* B. Clean Headers */
+    h1, h2, h3, h4, h5 {
         font-weight: 700;
         letter-spacing: -1px;
     }
     
-    /* 3. Metric Cards (Simple Box) */
+    /* C. Metric Cards */
     div[data-testid="stMetricValue"] {
         font-size: 1.8rem;
         background-color: #f0f2f6;
         padding: 5px 10px;
         border-radius: 5px;
-        border-left: 5px solid #ff4b4b; /* Streamlit Red Accent */
+        border-left: 5px solid #ff4b4b;
     }
     
-    /* 4. Expander Borders */
-    .stExpander {
-        border: 2px solid #000;
-        border-radius: 0px;
-        margin-bottom: 10px;
-    }
-    
-    /* 5. Buttons (Retro Rectangles) */
+    /* D. Buttons */
     div.stButton > button {
         border-radius: 0px;
         border: 2px solid #000;
         font-weight: bold;
-        box-shadow: 2px 2px 0px #000; /* Drop shadow effect */
+        box-shadow: 2px 2px 0px #000;
         transition: all 0.1s;
     }
     div.stButton > button:hover {
@@ -61,17 +54,37 @@ st.markdown("""
         transform: translate(-1px, -1px);
     }
     
-    /* 6. Comparison Box for Rewrites */
-    .rewrite-box {
-        background-color: #e6fffa;
-        padding: 15px;
-        border-left: 5px solid #00b894;
+    /* E. CLINIC CARD DESIGN (Deep Dive) */
+    .issue-tag {
+        background-color: #ffebee; /* Light Red */
+        color: #c62828;
+        padding: 5px 10px;
+        font-weight: bold;
+        border-left: 4px solid #c62828;
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+    }
+    .fix-tag {
+        background-color: #e8f5e9; /* Light Green */
+        color: #2e7d32;
+        padding: 5px 10px;
+        font-weight: bold;
+        border-left: 4px solid #2e7d32;
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+    }
+    .logic-footer {
+        font-size: 0.85rem;
+        color: #555;
+        background-color: #fafafa;
+        padding: 10px;
+        border-top: 1px dashed #ccc;
         margin-top: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. SECURITY & SETUP ---
+# --- 3. SECURITY & SETUP ---
 try:
     api_key = st.secrets["GOOGLE_API_KEY"]
 except (FileNotFoundError, KeyError):
@@ -84,7 +97,7 @@ if not api_key:
 os.environ["GOOGLE_API_KEY"] = api_key
 genai.configure(api_key=api_key)
 
-# --- 3. CORE ENGINE ---
+# --- 4. CORE ENGINE ---
 @st.cache_resource
 def get_embedding_model():
     return GoogleGenerativeAIEmbeddings(model="models/embedding-001")
@@ -92,7 +105,7 @@ def get_embedding_model():
 embeddings = get_embedding_model()
 PERSIST_DIRECTORY = "deck_memory_db"
 
-# --- 4. SIDEBAR: CONTROL PANEL ---
+# --- 5. SIDEBAR: CONTROL PANEL ---
 with st.sidebar:
     st.title("🎛️ SETTINGS")
     
@@ -124,8 +137,8 @@ with st.sidebar:
             except: pass
             st.success(f"System Index Updated: {len(docs)} chunks.")
 
-# --- 5. MAIN INTERFACE ---
-st.title("💾 DECK CLINIC - Analyse your proposals")
+# --- 6. MAIN INTERFACE ---
+st.title("💾 DECK CLINIC V6")
 st.caption(f"PROTOCOL: {doc_type} | CORE: gemini-flash-latest") 
 
 col1, col2 = st.columns([2, 3]) 
@@ -179,7 +192,7 @@ if target_pdf and analyze_btn:
         2. **Brevity:** If it can be said in 5 words, do not use 10.
         """
 
-    # --- UPDATED PROMPT STRUCTURE (V6) ---
+    # --- V6 PROMPT STRUCTURE ---
     prompt = f"""
     {base_instruction}
     
@@ -195,7 +208,7 @@ if target_pdf and analyze_btn:
     3. **STEP 3 (EXTRACTION):** Extract the current headlines to identify the existing narrative.
     4. **STEP 4 (Headline & Narrative Audit):**
        - Critique the current headlines: Do they tell a story if read in isolation? Are they descriptive or generic?
-       - Suggest a **"Revised Headline Flow"**: A list of rewritten headlines that guide the reader logically from the problem to the solution. Provide a summary underneath explaining your changes.
+       - Suggest a **"Revised Headline Flow"**: A list of rewritten headlines that guide the reader logically from the problem to the solution.
     
     ### JSON STRUCTURE:
     {{
@@ -240,7 +253,6 @@ if target_pdf and analyze_btn:
         with col2:
             st.markdown("### SCORECARD")
             s1, s2, s3 = st.columns(3)
-            # Use safe .get() to avoid errors if keys are missing
             s1.metric("LOGIC", f"{data.get('scores', {}).get('Logic', 0)}")
             s2.metric("CLARITY", f"{data.get('scores', {}).get('Clarity', 0)}")
             s3.metric("IMPACT", f"{data.get('scores', {}).get('Impact', 0)}")
@@ -249,19 +261,16 @@ if target_pdf and analyze_btn:
         st.info(f"**EXECUTIVE SUMMARY:** {data.get('executive_summary', 'No summary generated.')}")
         
         # --- NEW TABS LAYOUT ---
-        tab1, tab2 = st.tabs(["STORY FLOW", "DEEP DIVE & REWRITES"])
+        tab1, tab2 = st.tabs(["STORY FLOW", "🔬 DEEP DIVE & REWRITES"])
         
         # --- TAB 1: NARRATIVE FLOW ---
         with tab1:
             st.markdown("#### The Narrative Check (Pyramid Principle)")
-            
             nav_data = data.get('narrative_check', {})
             
-            # 1. Critique
             st.markdown(f"> *{nav_data.get('critique', 'No critique available.')}*")
             st.divider()
 
-            # 2. Side-by-Side Comparison
             col_a, col_b = st.columns(2)
             with col_a:
                 st.caption("🔴 ORIGINAL FLOW")
@@ -278,32 +287,19 @@ if target_pdf and analyze_btn:
             else:
                 st.success("✅ NARRATIVE THREAD STABLE")
         
-        # --- TAB 2: SECTIONS DEEP DIVE ---
+        # --- TAB 2: SECTIONS DEEP DIVE (SPLIT VIEW) ---
         with tab2:
-            st.markdown("#### Section-by-Section Analysis")
+            st.markdown("#### 🔬 Surgical Reconstruction")
+            st.caption("Specific text edits to improve Logic, Clarity, and Impact.")
             
-            # Iterate through the combined list
             deep_dive_items = data.get('section_deep_dive', [])
             
             if not deep_dive_items:
-                st.warning("No deep dive issues found.")
+                st.info("✅ No critical issues found. Your deck is clean!")
             
             for i, item in enumerate(deep_dive_items):
-                with st.expander(f"📍 {item.get('target_section', 'Unknown Section')}", expanded=(i==0)):
+                # Container for visual grouping
+                with st.container():
+                    st.markdown(f"##### 📍 Section: {item.get('target_section', 'General')}")
                     
-                    # The Problem
-                    st.markdown(f"**❌ ISSUE:** {item.get('issue', 'No issue description.')}")
-                    
-                    # The Fix (Highlighted Box)
-                    st.markdown('<div class="rewrite-box">', unsafe_allow_html=True)
-                    st.caption("✅ IMPROVED VERSION")
-                    st.markdown(f"{item.get('improved_version', 'N/A')}")
-                    st.markdown('</div>', unsafe_allow_html=True)
-                    
-                    # The Why
-                    st.markdown(f"**🧠 LOGIC:** *{item.get('why', 'N/A')}*")
-
-    except Exception as e:
-        st.error(f"Data Stream Parsing Error: {e}")
-        with st.expander("DEBUG DATA"):
-            st.code(response.text)
+                    # Layout: 1/
