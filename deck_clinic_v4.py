@@ -16,70 +16,78 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 2. CSS STYLING (Retro + Clinic Cards) ---
+# --- 2. CSS STYLING (Gemini / Google Style) ---
 st.markdown("""
 <style>
-    /* A. Retro Typewriter Font */
-    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
+    /* A. Gemini-Style Font (Inter) */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     
-    * {
-        font-family: 'Space Mono', monospace;
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
     }
     
     /* B. Clean Headers */
     h1, h2, h3, h4, h5 {
         font-weight: 700;
-        letter-spacing: -1px;
+        color: #202124; /* Google Dark Grey */
+        letter-spacing: -0.5px;
     }
     
-    /* C. Metric Cards */
+    /* C. Metric Cards (Clean & Minimal) */
     div[data-testid="stMetricValue"] {
         font-size: 1.8rem;
-        background-color: #f0f2f6;
-        padding: 5px 10px;
-        border-radius: 5px;
-        border-left: 5px solid #ff4b4b;
+        background-color: #ffffff;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
     
-    /* D. Buttons */
+    /* D. Buttons (Pill Shape / Google Style) */
     div.stButton > button {
-        border-radius: 0px;
-        border: 2px solid #000;
-        font-weight: bold;
-        box-shadow: 2px 2px 0px #000;
-        transition: all 0.1s;
+        border-radius: 20px;
+        border: 1px solid #dadce0;
+        font-weight: 600;
+        transition: all 0.2s;
+        background-color: #ffffff;
+        color: #3c4043;
     }
     div.stButton > button:hover {
-        box-shadow: 4px 4px 0px #000;
-        transform: translate(-1px, -1px);
+        background-color: #f1f3f4;
+        border-color: #dadce0;
+        transform: translateY(-1px);
+        color: #202124;
     }
     
     /* E. CLINIC CARD DESIGN (Deep Dive) */
     .issue-tag {
-        background-color: #ffebee; /* Light Red */
-        color: #c62828;
-        padding: 5px 10px;
-        font-weight: bold;
-        border-left: 4px solid #c62828;
+        background-color: #fce8e6; /* Google Red Light */
+        color: #c5221f; /* Google Red Dark */
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        display: inline-block;
         margin-bottom: 8px;
-        font-size: 0.85rem;
     }
     .fix-tag {
-        background-color: #e8f5e9; /* Light Green */
-        color: #2e7d32;
-        padding: 5px 10px;
-        font-weight: bold;
-        border-left: 4px solid #2e7d32;
+        background-color: #e6f4ea; /* Google Green Light */
+        color: #137333; /* Google Green Dark */
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        display: inline-block;
         margin-bottom: 8px;
-        font-size: 0.85rem;
     }
     .logic-footer {
         font-size: 0.85rem;
-        color: #555;
-        background-color: #fafafa;
-        padding: 10px;
-        border-top: 1px dashed #ccc;
+        color: #5f6368;
+        background-color: #f8f9fa;
+        padding: 12px;
+        border-radius: 8px;
         margin-top: 10px;
+        border: 1px solid #f1f3f4;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -149,15 +157,11 @@ with col1:
     analyze_btn = st.button("RUN DIAGNOSTIC", type="primary", use_container_width=True)
 
 if target_pdf and analyze_btn:
-    # A. File Processing
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-        tmp_file.write(target_pdf.read())
-        draft_path = tmp_file.name
-    
-    loader = PyPDFLoader(draft_path)
-    draft_docs = loader.load()
-    draft_text = " ".join([d.page_content for d in draft_docs])
-
+    # A. File Processing # NEW CODE: Add Page Markers explicitly
+    draft_text = ""
+    for i, doc in enumerate(draft_docs):
+        # We inject a clear marker [PAGE 1], [PAGE 2] for the AI to see
+        draft_text += f"\n\n--- [PAGE {i+1}] ---\n{doc.page_content}"
     # B. RAG Retrieval
     with st.spinner("Retrieving Context..."):
         try:
@@ -248,6 +252,7 @@ if target_pdf and analyze_btn:
         }},
        "section_deep_dive": [
             {{
+                "page_number": "<int: The page number extracted from the [PAGE X] marker>",
                 "target_section": "<string: Quote the specific BULLET POINT or SENTENCE (not the headline)>",
                 "issue": "<string: Specific critique of the evidence/data (e.g. 'Claim lacks metric', 'Vague adjective')>",
                 "improved_version": "<string: Rewrite the bullet point to be data-driven and specific>",
@@ -314,27 +319,37 @@ if target_pdf and analyze_btn:
                 st.info("✅ No critical issues found. Your deck is clean!")
             
             for i, item in enumerate(deep_dive_items):
-                # Container for visual grouping
                 with st.container():
-                    st.markdown(f"##### 📍 Section: {item.get('target_section', 'General')}")
+                    # 1. HEADER WITH PAGE NUMBER
+                    page_num = item.get('page_number', 'General')
+                    target = item.get('target_section', 'General Logic')
+                    st.markdown(f"##### 📄 Page {page_num}: {target[:50]}..." if len(target) > 50 else f"##### 📄 Page {page_num}: {target}")
                     
-                    # Layout: 1/3 for Issue (Left), 2/3 for Fix (Right)
                     c1, c2 = st.columns([1, 2], gap="large")
                     
                     with c1:
-                        # Left: Diagnosis
+                        # DIAGNOSIS (RED)
                         st.markdown('<div class="issue-tag">THE SYMPTOM (ISSUE)</div>', unsafe_allow_html=True)
                         st.markdown(f"**{item.get('issue', 'N/A')}**")
-                        
-                        # Root Cause Footer
                         st.markdown(f"<div class='logic-footer'><b>💡 ROOT CAUSE:</b><br>{item.get('why', 'N/A')}</div>", unsafe_allow_html=True)
                     
                     with c2:
-                        # Right: The Prescription
+                        # PRESCRIPTION (GREEN)
                         st.markdown('<div class="fix-tag">THE PRESCRIPTION (REWRITE)</div>', unsafe_allow_html=True)
-                        st.code(item.get('improved_version', 'N/A'), language="text")
+                        
+                        rewrite_text = item.get('improved_version', 'N/A')
+                        
+                        # TRUNCATION LOGIC
+                        # If text is short (< 300 chars), show it all.
+                        # If text is long, show preview + Expander.
+                        if len(rewrite_text) < 300:
+                            st.info(rewrite_text, icon="✍️")
+                        else:
+                            st.info(rewrite_text[:300] + "...", icon="✍️")
+                            with st.expander("Show Full Rewrite"):
+                                st.code(rewrite_text, language="text") # Use code block inside expander for easy copying
                     
-                    st.divider() # Separation
+                    st.divider()
 
     except Exception as e:
         st.error(f"Data Stream Parsing Error: {e}")
