@@ -302,4 +302,25 @@ if target_pdf and analyze_btn:
                 with st.container():
                     st.markdown(f"##### 📍 Section: {item.get('target_section', 'General')}")
                     
-                    # Layout: 1/
+                    # Layout: 1/3 for Issue (Left), 2/3 for Fix (Right)
+                    c1, c2 = st.columns([1, 2], gap="large")
+                    
+                    with c1:
+                        # Left: Diagnosis
+                        st.markdown('<div class="issue-tag">THE SYMPTOM (ISSUE)</div>', unsafe_allow_html=True)
+                        st.markdown(f"**{item.get('issue', 'N/A')}**")
+                        
+                        # Root Cause Footer
+                        st.markdown(f"<div class='logic-footer'><b>💡 ROOT CAUSE:</b><br>{item.get('why', 'N/A')}</div>", unsafe_allow_html=True)
+                    
+                    with c2:
+                        # Right: The Prescription
+                        st.markdown('<div class="fix-tag">THE PRESCRIPTION (REWRITE)</div>', unsafe_allow_html=True)
+                        st.code(item.get('improved_version', 'N/A'), language="text")
+                    
+                    st.divider() # Separation
+
+    except Exception as e:
+        st.error(f"Data Stream Parsing Error: {e}")
+        with st.expander("DEBUG DATA"):
+            st.code(response.text)
