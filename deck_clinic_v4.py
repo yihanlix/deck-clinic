@@ -125,7 +125,7 @@ with st.sidebar:
             st.success(f"System Index Updated: {len(docs)} chunks.")
 
 # --- 5. MAIN INTERFACE ---
-st.title("💾 DECK CLINIC V6")
+st.title("💾 DECK CLINIC - Analyse your proposals")
 st.caption(f"PROTOCOL: {doc_type} | CORE: gemini-flash-latest") 
 
 col1, col2 = st.columns([2, 3]) 
@@ -195,7 +195,7 @@ if target_pdf and analyze_btn:
     3. **STEP 3 (EXTRACTION):** Extract the current headlines to identify the existing narrative.
     4. **STEP 4 (Headline & Narrative Audit):**
        - Critique the current headlines: Do they tell a story if read in isolation? Are they descriptive or generic?
-       - Suggest a **"Revised Headline Flow"**: A list of rewritten headlines that guide the reader logically from the problem to the solution.
+       - Suggest a **"Revised Headline Flow"**: A list of rewritten headlines that guide the reader logically from the problem to the solution. Provide a summary underneath explaining your changes.
     
     ### JSON STRUCTURE:
     {{
