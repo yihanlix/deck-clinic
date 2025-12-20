@@ -209,6 +209,7 @@ if target_pdf and analyze_btn:
     4. **STEP 4 (Headline & Narrative Audit):**
        - Critique the current headlines: Do they tell a story if read in isolation? Are they descriptive or generic?
        - Suggest a **"Revised Headline Flow"**: A list of rewritten headlines that guide the reader logically from the problem to the solution.
+    5. **STEP 5 (CONTENT RIGOR):** Scan the **body paragraphs and bullet points** for vague claims (e.g., "significant growth", "optimized synergies"). Ignore the headlines for this step.
    
     ### EXAMPLES OF GOOD CRITIQUES (FEW-SHOT):
     
@@ -219,6 +220,11 @@ if target_pdf and analyze_btn:
     input_text: "We will leverage synergies to optimize the flywheel."
     critique: "Jargon overload. Low clarity. No distinct meaning."
     rewrite: "We will migrate the Promotion admin to CMT to siginificantly improve efficience."
+
+    # ADD THIS NEW "BODY CONTENT" EXAMPLE:
+    input_text: "Slide Title: Strong User Growth. Body: We saw significant uplift in daily active users across various regions due to better performance."
+    critique: "Vague Body Content. The headline is fine, but the bullet point lacks evidence. 'Significant uplift' needs a % or absolute number. 'Various regions' is lazy—specify which ones."
+    rewrite: "Body: DAU increased by 15% (20k users) in SEA and LATAM, driven by a 200ms reduction in app load time."
     
     ### JSON STRUCTURE:
     {{
@@ -240,11 +246,11 @@ if target_pdf and analyze_btn:
                  "<string: Improved Headline 2>"
              ]
         }},
-        "section_deep_dive": [
+       "section_deep_dive": [
             {{
-                "target_section": "<string: Name of original section>",
-                "issue": "<string: Specific critique (e.g. Logic gap, Passive voice)>",
-                "improved_version": "<string: The rewritten text>",
+                "target_section": "<string: Quote the specific BULLET POINT or SENTENCE (not the headline)>",
+                "issue": "<string: Specific critique of the evidence/data (e.g. 'Claim lacks metric', 'Vague adjective')>",
+                "improved_version": "<string: Rewrite the bullet point to be data-driven and specific>",
                 "why": "<string: Why this is better>"
             }}
         ]
