@@ -141,7 +141,7 @@ with st.sidebar:
 
 # --- 6. MAIN INTERFACE ---
 st.title(" 🎠DECK Playground (Vision)")
-st.caption(f"PROTOCOL: {doc_type} | CORE: gemini-1.5-flash") 
+st.caption(f"PROTOCOL: {doc_type} | CORE: gemini-flash-latest") 
 
 col1, col2 = st.columns([2, 3]) 
 
@@ -273,7 +273,7 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
 
         # E. Generation (NOW MULTIMODAL)
         with st.spinner("Processing Logic & Vision..."):
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-flash-latest')
             # WE PASS THE PROMPT TEXT + THE LIST OF IMAGES
             response = model.generate_content([prompt, *st.session_state.images], generation_config={"response_mime_type": "application/json"})
             
