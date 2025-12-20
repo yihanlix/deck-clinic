@@ -157,10 +157,17 @@ with col1:
     analyze_btn = st.button("RUN DIAGNOSTIC", type="primary", use_container_width=True)
 
 if target_pdf and analyze_btn:
-    # A. File Processing # NEW CODE: Add Page Markers explicitly
+    # A. File Processing
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+        tmp_file.write(target_pdf.read())
+        draft_path = tmp_file.name
+    
+    loader = PyPDFLoader(draft_path)
+    draft_docs = loader.load()  # <--- Make sure this line exists!
+    
+    # ✅ FIX: This loop must be INDENTED to match the line above
     draft_text = ""
     for i, doc in enumerate(draft_docs):
-        # We inject a clear marker [PAGE 1], [PAGE 2] for the AI to see
         draft_text += f"\n\n--- [PAGE {i+1}] ---\n{doc.page_content}"
     # B. RAG Retrieval
     with st.spinner("Retrieving Context..."):
