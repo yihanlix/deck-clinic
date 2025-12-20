@@ -209,6 +209,16 @@ if target_pdf and analyze_btn:
     4. **STEP 4 (Headline & Narrative Audit):**
        - Critique the current headlines: Do they tell a story if read in isolation? Are they descriptive or generic?
        - Suggest a **"Revised Headline Flow"**: A list of rewritten headlines that guide the reader logically from the problem to the solution.
+   
+    ### EXAMPLES OF GOOD CRITIQUES (FEW-SHOT):
+    
+    input_text: "The KSP is enable Shopee buyers to see an AI generated summary of available promotions and encourage them to buy. In this deck, we will discuss the logic of the input of promotion summary first, then show the front end demo and share the examples of different generated example in words."
+    critique: "Low Clarity. The first sentence is grammatically broken. 'Encourage them to buy' is weak. The storyline lacks a clear reasoning flow."
+    rewrite: "Objective: Increase Shopee conversion rates by displaying AI-generated promotion summaries.This deck follows a three-part structure: 1. Core Logic (How inputs drive summaries), 2. Output Validation (Reviewing generated text examples), and 3. User Experience (Frontend demo)."
+
+    input_text: "We will leverage synergies to optimize the flywheel."
+    critique: "Jargon overload. Low clarity. No distinct meaning."
+    rewrite: "We will migrate the Promotion admin to CMT to siginificantly improve efficience."
     
     ### JSON STRUCTURE:
     {{
