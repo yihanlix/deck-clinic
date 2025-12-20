@@ -40,7 +40,7 @@ def log_interaction(session_id, filename, doc_type, scores, exec_summary):
 # --- 1. CONFIGURATION ---
 st.set_page_config(
     page_title="Deck Clinic)",
-    page_icon="👁️",
+    page_icon="🎠",
     layout="wide"
 )
 
