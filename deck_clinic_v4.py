@@ -100,20 +100,39 @@ with st.sidebar:
             st.success(f"System Index Updated: {len(docs)} chunks.")
 
     st.divider()
+    
+    # 🔐 UPDATED ADMIN PANEL
     with st.expander("🔐 ADMIN PANEL"):
         admin_pass = st.text_input("Enter Admin Key", type="password")
         if admin_pass == "gemini2025": 
             st.success("ACCESS GRANTED")
+            
+            # ✅ NEW: Show Feedback Logs
+            if st.checkbox("Show User Feedback"):
+                if os.path.exists("feedback_logs.csv"):
+                    st.markdown("### 🗣️ User Feedback")
+                    st.dataframe(pd.read_csv("feedback_logs.csv"))
+                else:
+                    st.warning("No feedback recorded yet.")
+
+            st.divider()
+
+            # ✅ EXISTING: Show System Logs
             if st.checkbox("Show Logic Logs"):
                 if os.path.exists("clinic_logs.csv"):
                     df = pd.read_csv("clinic_logs.csv")
+                    st.markdown("### 🚦 System Health")
                     st.dataframe(df)
                     st.write(f"**Average Logic Score:** {df['Logic Score'].mean():.1f}/100")
-                    if st.button("Clear Logs"):
-                        os.remove("clinic_logs.csv")
-                        st.rerun()
                 else:
                     st.warning("No logs found.")
+            
+            # Maintenance
+            if st.button("Clear ALL Logs"):
+                if os.path.exists("clinic_logs.csv"): os.remove("clinic_logs.csv")
+                if os.path.exists("feedback_logs.csv"): os.remove("feedback_logs.csv")
+                st.rerun()
+
         elif admin_pass:
             st.error("Access Denied")
 
