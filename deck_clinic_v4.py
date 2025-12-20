@@ -180,31 +180,37 @@ if target_pdf and analyze_btn:
     {draft_text[:50000]} 
     
     ### INSTRUCTIONS:
-    1. Analyze the text based on the FRAMEWORK above.
-    2. **CRITICAL STEP:** Extract the 'Narrative Flow'. Identify the Headline/Topic Sentence of every distinct section. List them in order to test the story flow.
-    3. Output in JSON only.
-
+    1. **STEP 1 (HIDDEN BRAINSTORM):** Read the text. specificially look for logical gaps. Ask yourself: "Does the problem prove the solution?" "Is the data specific?"
+    2. **STEP 2 (SCORING):** Only assign scores AFTER you have written the critique.
+    3. **STEP 3 (Headline & Narrative Audit):**
+    - Critique the current headlines: Do they tell a story if read in isolation? Are they descriptive or generic?
+    - Suggest a **"Revised Headline Flow"**: A list of rewritten headlines that guide the reader logically from the problem to the solution, ensuring strong narrative continuity between sections.
+    
     ### JSON STRUCTURE:
     {{
+        "reasoning_log": "<string: Write a 3-sentence internal analysis of the logic flaws here FIRST.>",
         "scores": {{
             "Logic": <int 0-100>,
             "Clarity": <int 0-100>,
             "Impact": <int 0-100>
         }},
-        "executive_summary": "<string: Brutal one-sentence summary>",
-        "narrative_check": [
+        "executive_summary": "<string: Brutal one-sentence summary based on the reasoning_log>",
+        "narrative_check": {{
+             "critique": "<string: Critique of the current storytelling flow>",
+             "revised_headlines": [
              "<string: Slide/Section 1 Headline>",
              "<string: Slide/Section 2 Headline>",
              "<string: Slide/Section 3 Headline>"
-        ],
-        "critical_issues": [
-            {{ "section": "<string>", "issue": "<string>", "fix": "<string>" }}
-        ],
-        "rewrite_showcase": {{
-            "original_text": "<string>",
-            "improved_version": "<string>",
-            "why": "<string>"
-        }}
+             ]
+        }},
+        "section_deep_dive": [
+            {{
+                "target_section": "<string: Name of original section>",
+                "issue": "<string: Specific critique (e.g. Logic gap, Passive voice)>",
+                "improved_version": "<string: The rewritten text>",
+                "why": "<string: Why this is better>"
+            }}
+        ]
     }}
     """
 
