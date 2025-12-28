@@ -11,7 +11,6 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
-# NEW: Library for Vision
 from pdf2image import convert_from_path 
 
 # --- HELPER FUNCTIONS ---
@@ -37,99 +36,218 @@ def log_interaction(session_id, filename, doc_type, scores, exec_summary):
             exec_summary
         ])
 
+def get_score_context(score):
+    """Return tier, color, and advice based on score"""
+    if score >= 85:
+        return "EXCELLENT", "#2dd4bf", "Deck is presentation-ready"
+    elif score >= 70:
+        return "GOOD", "#60a5fa", "Minor refinements suggested"
+    elif score >= 50:
+        return "NEEDS WORK", "#fb923c", "Significant improvements needed"
+    else:
+        return "CRITICAL", "#f87171", "Major structural issues detected"
+
 # --- 1. CONFIGURATION ---
 st.set_page_config(
-    page_title="Deck Clinic)",
+    page_title="Deck Clinic",
     page_icon="🎠",
     layout="wide"
 )
 
-# --- 2. CSS STYLING ---
-# Replace CSS with this brand-specific design:
-
+# --- 2. ENHANCED CSS STYLING ---
 st.markdown("""
 <style>
-    /* TYPOGRAPHY: Technical + Editorial Mix */
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Fraunces:wght@700;900&display=swap');
+    /* TYPOGRAPHY: Editorial Serif + Clean Sans */
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=DM+Sans:wght@400;500;700&display=swap');
     
     html, body, [class*="css"] { 
-        font-family: 'JetBrains Mono', monospace;
-        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
-        color: #e8e8e8;
+        font-family: 'DM Sans', sans-serif;
+        background: linear-gradient(to bottom, #fafafa 0%, #f5f5f5 100%);
     }
     
-    h1, h2, h3 { 
-        font-family: 'Fraunces', serif; 
+    h1 { 
+        font-family: 'Playfair Display', serif; 
         font-weight: 900;
-        background: linear-gradient(120deg, #00f5a0 0%, #00d9f5 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        font-size: 3.5rem;
+        color: #1a1a1a;
         letter-spacing: -2px;
+        margin-bottom: 0.5rem;
     }
     
-    /* SCORE CARDS: Clinical + Precise */
+    h2, h3, h4, h5 { 
+        font-family: 'Playfair Display', serif; 
+        font-weight: 700;
+        color: #1a1a1a;
+        letter-spacing: -1px;
+    }
+    
+    /* SCORE CARDS: Premium Glass Effect */
     div[data-testid="stMetricValue"] {
-        font-size: 3rem;
-        font-family: 'JetBrains Mono', monospace;
-        background: rgba(0, 245, 160, 0.1);
-        border: 2px solid #00f5a0;
-        border-radius: 4px;
-        padding: 20px;
-        box-shadow: 0 0 20px rgba(0, 245, 160, 0.3);
-        position: relative;
+        font-size: 3.5rem;
+        font-family: 'Playfair Display', serif;
+        font-weight: 900;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 28px 20px;
+        border-radius: 16px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 
+            0 4px 6px rgba(0, 0, 0, 0.03),
+            0 10px 20px rgba(0, 0, 0, 0.05);
+        text-align: center;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
     }
     
-    /* Add Score Context Labels */
-    div[data-testid="stMetricValue"]::after {
-        content: attr(data-score-label);
-        position: absolute;
-        bottom: -25px;
-        left: 0;
-        font-size: 0.7rem;
-        color: #888;
-        text-transform: uppercase;
-        letter-spacing: 1px;
+    div[data-testid="stMetricValue"]:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 8px 12px rgba(0, 0, 0, 0.05),
+            0 16px 32px rgba(0, 0, 0, 0.08);
     }
     
-    /* BUTTONS: Sharp Clinical UI */
-    div.stButton > button {
-        background: linear-gradient(135deg, #00f5a0 0%, #00d9f5 100%);
-        color: #0a0a0a;
-        border: none;
-        border-radius: 0;
-        font-weight: 600;
+    div[data-testid="stMetricLabel"] {
+        font-family: 'DM Sans', sans-serif;
         text-transform: uppercase;
         letter-spacing: 2px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #6b7280;
+        margin-bottom: 8px;
+    }
+    
+    /* BUTTONS: Sophisticated Minimal */
+    div.stButton > button {
+        border-radius: 12px;
+        border: 2px solid #1a1a1a;
+        font-weight: 700;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        background-color: #1a1a1a;
+        color: #ffffff;
         padding: 12px 32px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-family: 'DM Sans', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.85rem;
     }
     
     div.stButton > button:hover {
+        background-color: #ffffff;
+        color: #1a1a1a;
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 245, 160, 0.4);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
     }
     
-    /* ISSUE/FIX TAGS: Medical Chart Style */
+    div.stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+        border: none;
+        color: #ffffff;
+    }
+    
+    div.stButton > button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #db2777 0%, #7c3aed 100%);
+        color: #ffffff;
+        box-shadow: 0 12px 24px rgba(236, 72, 153, 0.3);
+    }
+    
+    /* ISSUE/FIX TAGS: Editorial Style */
     .issue-tag {
-        background: rgba(255, 59, 48, 0.2);
-        color: #ff3b30;
-        border-left: 4px solid #ff3b30;
-        padding: 8px 16px;
-        font-family: 'JetBrains Mono', monospace;
+        background-color: #fff1f2;
+        color: #be123c;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        display: inline-block;
+        margin-bottom: 10px;
+        border-left: 3px solid #be123c;
+        font-family: 'DM Sans', sans-serif;
         text-transform: uppercase;
-        font-size: 0.7rem;
-        letter-spacing: 1px;
+        letter-spacing: 0.5px;
     }
     
     .fix-tag {
-        background: rgba(0, 245, 160, 0.2);
-        color: #00f5a0;
-        border-left: 4px solid #00f5a0;
-        padding: 8px 16px;
-        font-family: 'JetBrains Mono', monospace;
+        background-color: #ecfdf5;
+        color: #047857;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        display: inline-block;
+        margin-bottom: 10px;
+        border-left: 3px solid #047857;
+        font-family: 'DM Sans', sans-serif;
         text-transform: uppercase;
-        font-size: 0.7rem;
+        letter-spacing: 0.5px;
+    }
+    
+    .logic-footer {
+        font-size: 0.9rem;
+        color: #4b5563;
+        background: linear-gradient(to right, #fafafa 0%, #ffffff 100%);
+        padding: 16px;
+        border-radius: 12px;
+        margin-top: 12px;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        font-family: 'DM Sans', sans-serif;
+        line-height: 1.6;
+    }
+    
+    /* Score Context Badge */
+    .score-badge {
+        display: inline-block;
+        padding: 6px 16px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
         letter-spacing: 1px;
+        margin-top: 8px;
+        font-family: 'DM Sans', sans-serif;
+    }
+    
+    /* Info Boxes */
+    div[data-testid="stMarkdownContainer"] > div > div.stAlert {
+        border-radius: 12px;
+        border-left-width: 4px;
+        font-family: 'DM Sans', sans-serif;
+    }
+    
+    /* File Uploader */
+    div[data-testid="stFileUploader"] {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 16px;
+        padding: 20px;
+        border: 2px dashed rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    div[data-testid="stFileUploader"]:hover {
+        border-color: rgba(0, 0, 0, 0.3);
+        background: rgba(255, 255, 255, 1);
+    }
+    
+    /* Expander */
+    div[data-testid="stExpander"] {
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 12px;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        margin-bottom: 16px;
+    }
+    
+    /* Tabs */
+    button[data-baseweb="tab"] {
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.85rem;
+    }
+    
+    /* Divider */
+    hr {
+        margin: 2rem 0;
+        border: none;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -215,7 +333,7 @@ with st.sidebar:
                 st.rerun()
 
 # --- 6. MAIN INTERFACE ---
-st.title(" 🎠DECK Clinic")
+st.title("🎠 DECK Clinic")
 st.caption(f"Built by Olivia Li | PROTOCOL: {doc_type} | CORE: gemini-flash-latest | EMBEDDING: embedding-001 | Langchain") 
 
 col1, col2 = st.columns([2, 3]) 
@@ -223,13 +341,17 @@ col1, col2 = st.columns([2, 3])
 with col1:
     st.markdown("### UPLOAD DRAFT DECK")
     target_pdf = st.file_uploader("Upload Draft PDF", type="pdf", key="target")
+    
+    if not target_pdf:
+        st.info("👆 Upload your deck to begin analysis")
+    
     analyze_btn = st.button("RUN DIAGNOSTIC", type="primary", use_container_width=True)
 
-# 1. Reset Session if NEW file uploadedx
+# 1. Reset Session if NEW file uploaded
 if target_pdf and 'last_uploaded' not in st.session_state:
     st.session_state.last_uploaded = target_pdf.name
     st.session_state.analysis_data = None
-    st.session_state.images = None # Store images
+    st.session_state.images = None
     st.session_state.session_id = str(uuid.uuid4())[:8] 
 elif target_pdf and st.session_state.get('last_uploaded') != target_pdf.name:
     st.session_state.last_uploaded = target_pdf.name
@@ -251,14 +373,20 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
         with open(save_path, "wb") as f:
             f.write(target_pdf.getbuffer())
         
-        # --- NEW: CONVERT PDF TO IMAGES ---
+        # --- CONVERT PDF TO IMAGES with Better Error Handling ---
         with st.spinner("Processing Vision (Converting Slides)..."):
             try:
                 images = convert_from_path(save_path)
                 st.session_state.images = images
             except Exception as e:
-                st.error(f"Vision Error (Is Poppler installed?): {e}")
-                st.stop()
+                st.warning(f"""
+                ⚠️ **Vision processing unavailable** (Poppler not installed)
+                
+                Continuing with text-only analysis. For full multimodal analysis, install Poppler:
+                - Mac: `brew install poppler`
+                - Linux: `apt-get install poppler-utils`
+                """)
+                st.session_state.images = None
         
         # B. Text Extraction for RAG
         loader = PyPDFLoader(save_path)
@@ -276,7 +404,7 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
             except:
                 knowledge_context = "Standard Top Tech Company Protocols"
 
-        # D. Prompt Construction (YOUR ORIGINAL PROMPT + VISION NOTE)
+        # D. Prompt Construction (YOUR ORIGINAL PROMPT)
         base_instruction = ""
         if "Strategy" in doc_type:
             base_instruction = "ROLE: Head of Product Manager in Tech Company. FRAMEWORK: Amazon Clarity, McKinsey Structure.BLUF, Extreme Brevity."
@@ -344,21 +472,40 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
         }}
         """
 
-        # E. Generation (NOW MULTIMODAL)
+        # E. Generation (Multimodal with Better Error Handling)
         with st.spinner("Processing Logic & Vision..."):
-            model = genai.GenerativeModel('gemini-flash-latest')
-            # WE PASS THE PROMPT TEXT + THE LIST OF IMAGES
-            response = model.generate_content([prompt, *st.session_state.images], generation_config={"response_mime_type": "application/json"})
-            
-            st.session_state.analysis_data = json.loads(response.text)
-            
-            log_interaction(
-                session_id=session_id,
-                filename=safe_filename,
-                doc_type=doc_type,
-                scores=st.session_state.analysis_data.get('scores', {}),
-                exec_summary=st.session_state.analysis_data.get('executive_summary', 'N/A')
-            )
+            try:
+                model = genai.GenerativeModel('gemini-flash-latest')
+                
+                # Build content list based on whether images are available
+                content_list = [prompt]
+                if st.session_state.images:
+                    content_list.extend(st.session_state.images)
+                
+                response = model.generate_content(
+                    content_list, 
+                    generation_config={"response_mime_type": "application/json"}
+                )
+                
+                # Parse JSON with error handling
+                try:
+                    st.session_state.analysis_data = json.loads(response.text)
+                except json.JSONDecodeError:
+                    # Try cleaning up markdown fences
+                    cleaned = response.text.replace("```json", "").replace("```", "").strip()
+                    st.session_state.analysis_data = json.loads(cleaned)
+                
+                log_interaction(
+                    session_id=session_id,
+                    filename=safe_filename,
+                    doc_type=doc_type,
+                    scores=st.session_state.analysis_data.get('scores', {}),
+                    exec_summary=st.session_state.analysis_data.get('executive_summary', 'N/A')
+                )
+                
+            except Exception as e:
+                st.error(f"❌ Analysis failed: {str(e)}")
+                st.stop()
 
     # PHASE B: RENDERING
     data = st.session_state.analysis_data
@@ -366,9 +513,26 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
     with col2:
         st.markdown(f"### SCORECARD (ID: `{st.session_state.session_id}`)")
         s1, s2, s3 = st.columns(3)
-        s1.metric("LOGIC", f"{data.get('scores', {}).get('Logic', 0)}")
-        s2.metric("CLARITY", f"{data.get('scores', {}).get('Clarity', 0)}")
-        s3.metric("IMPACT", f"{data.get('scores', {}).get('Impact', 0)}")
+        
+        # Enhanced Score Display with Context
+        logic_score = data.get('scores', {}).get('Logic', 0)
+        clarity_score = data.get('scores', {}).get('Clarity', 0)
+        impact_score = data.get('scores', {}).get('Impact', 0)
+        
+        with s1:
+            st.metric("LOGIC", f"{logic_score}")
+            tier, color, advice = get_score_context(logic_score)
+            st.markdown(f'<div class="score-badge" style="background-color: {color}; color: white;">{tier}</div>', unsafe_allow_html=True)
+            
+        with s2:
+            st.metric("CLARITY", f"{clarity_score}")
+            tier, color, advice = get_score_context(clarity_score)
+            st.markdown(f'<div class="score-badge" style="background-color: {color}; color: white;">{tier}</div>', unsafe_allow_html=True)
+            
+        with s3:
+            st.metric("IMPACT", f"{impact_score}")
+            tier, color, advice = get_score_context(impact_score)
+            st.markdown(f'<div class="score-badge" style="background-color: {color}; color: white;">{tier}</div>', unsafe_allow_html=True)
     
     st.divider()
     
@@ -426,15 +590,15 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
                 if len(header_text) > 60: header_text = header_text[:150]
                 st.markdown(f"##### {header_text}")
                 
-                # --- NEW: SHOW SLIDE IMAGE IF AVAILABLE ---
-                try:
-                    p_idx = int(page_num) - 1
-                    if images and 0 <= p_idx < len(images):
-                        with st.expander(f"👁️ View Slide {page_num} Snapshot"):
-                            st.image(images[p_idx], use_container_width=True)
-                except:
-                    pass
-                # ------------------------------------------
+                # Show slide image if available
+                if images:
+                    try:
+                        p_idx = int(page_num) - 1
+                        if 0 <= p_idx < len(images):
+                            with st.expander(f"👁️ View Slide {page_num} Snapshot"):
+                                st.image(images[p_idx], use_container_width=True)
+                    except:
+                        pass
 
                 c1, c2 = st.columns([1, 2], gap="large")
                 with c1:
