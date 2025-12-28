@@ -47,6 +47,123 @@ def get_score_context(score):
     else:
         return "CRITICAL", "#f87171", "Major structural issues detected"
 
+# --- ADVANCED RAG FUNCTIONS ---
+def advanced_rag_pipeline(draft_text, doc_type, vector_db):
+    """
+    Advanced RAG with query expansion and reciprocal rank fusion
+    """
+    
+    # STEP 1: Query Expansion
+    query_expansion_prompt = f"""
+    Generate 5 focused search queries to find relevant examples for this {doc_type}:
+    
+    DRAFT EXCERPT:
+    {draft_text[:1500]}
+    
+    Return JSON array: ["query1", "query2", "query3", "query4", "query5"]
+    Each query should focus on a different aspect (problem, solution, metrics, narrative, audience).
+    """
+    
+    model = genai.GenerativeModel('gemini-flash-latest')
+    try:
+        response = model.generate_content(
+            query_expansion_prompt,
+            generation_config={"response_mime_type": "application/json"}
+        )
+        queries = json.loads(response.text)
+    except:
+        # Fallback to simple query if expansion fails
+        queries = [draft_text[:500]]
+    
+    # STEP 2: Multi-Query Retrieval with RRF
+    all_results = {}
+    
+    for i, query in enumerate(queries):
+        try:
+            results = vector_db.similarity_search(query, k=5)
+            
+            for rank, doc in enumerate(results):
+                doc_id = hash(doc.page_content[:200])
+                if doc_id not in all_results:
+                    all_results[doc_id] = {'doc': doc, 'ranks': []}
+                all_results[doc_id]['ranks'].append(rank + 1)
+        except:
+            continue
+    
+    # STEP 3: Reciprocal Rank Fusion
+    k = 60
+    for doc_id in all_results:
+        ranks = all_results[doc_id]['ranks']
+        rrf_score = sum(1 / (k + r) for r in ranks)
+        all_results[doc_id]['rrf_score'] = rrf_score
+    
+    sorted_docs = sorted(
+        all_results.values(),
+        key=lambda x: x['rrf_score'],
+        reverse=True
+    )
+    
+    final_docs = [item['doc'] for item in sorted_docs[:5]]
+    
+    # STEP 4: Assemble Context with Source Attribution
+    knowledge_context = ""
+    for i, doc in enumerate(final_docs, 1):
+        knowledge_context += f"\n\n━━━ EXAMPLE {i} ━━━\n{doc.page_content}"
+    
+    return knowledge_context, queries, final_docs
+
+# --- ENHANCED DOCUMENT INDEXING ---
+def enhanced_document_indexing(uploaded_file):
+    """
+    Index documents with metadata extraction
+    """
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+        tmp_file.write(uploaded_file.read())
+        tmp_file_path = tmp_file.name
+    
+    loader = PyPDFLoader(tmp_file_path)
+    raw_docs = loader.load()
+    
+    # Extract metadata
+    sample_text = "\n".join([doc.page_content for doc in raw_docs[:3]])
+    
+    metadata_prompt = f"""
+    Analyze this document briefly:
+    
+    {sample_text[:2000]}
+    
+    Return JSON:
+    {{
+        "doc_type": "Strategy Deck | Product Spec | Fundraising Pitch",
+        "quality_tier": "Excellent | Good | Average"
+    }}
+    """
+    
+    try:
+        model = genai.GenerativeModel('gemini-flash-latest')
+        response = model.generate_content(
+            metadata_prompt,
+            generation_config={"response_mime_type": "application/json"}
+        )
+        metadata = json.loads(response.text)
+    except:
+        metadata = {"doc_type": "Unknown", "quality_tier": "Unknown"}
+    
+    # Split with metadata
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=500)
+    docs = text_splitter.split_documents(raw_docs)
+    
+    for doc in docs:
+        doc.metadata.update({
+            'doc_type': metadata.get('doc_type', 'Unknown'),
+            'quality_tier': metadata.get('quality_tier', 'Unknown'),
+            'upload_date': datetime.datetime.now().isoformat(),
+            'filename': uploaded_file.name
+        })
+    
+    return docs, metadata
+
 # --- 1. CONFIGURATION ---
 st.set_page_config(
     page_title="Deck Clinic",
@@ -57,7 +174,6 @@ st.set_page_config(
 # --- 2. ENHANCED CSS STYLING ---
 st.markdown("""
 <style>
-    /* TYPOGRAPHY: Editorial Serif + Clean Sans */
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=DM+Sans:wght@400;500;700&display=swap');
     
     html, body, [class*="css"] { 
@@ -81,7 +197,6 @@ st.markdown("""
         letter-spacing: -1px;
     }
     
-    /* SCORE CARDS: Premium Glass Effect */
     div[data-testid="stMetricValue"] {
         font-size: 3.5rem;
         font-family: 'Playfair Display', serif;
@@ -115,7 +230,6 @@ st.markdown("""
         margin-bottom: 8px;
     }
     
-    /* BUTTONS: Sophisticated Minimal */
     div.stButton > button {
         border-radius: 12px;
         border: 2px solid #1a1a1a;
@@ -149,7 +263,6 @@ st.markdown("""
         box-shadow: 0 12px 24px rgba(236, 72, 153, 0.3);
     }
     
-    /* ISSUE/FIX TAGS: Editorial Style */
     .issue-tag {
         background-color: #fff1f2;
         color: #be123c;
@@ -192,7 +305,6 @@ st.markdown("""
         line-height: 1.6;
     }
     
-    /* Score Context Badge */
     .score-badge {
         display: inline-block;
         padding: 6px 16px;
@@ -205,14 +317,12 @@ st.markdown("""
         font-family: 'DM Sans', sans-serif;
     }
     
-    /* Info Boxes */
     div[data-testid="stMarkdownContainer"] > div > div.stAlert {
         border-radius: 12px;
         border-left-width: 4px;
         font-family: 'DM Sans', sans-serif;
     }
     
-    /* File Uploader */
     div[data-testid="stFileUploader"] {
         background: rgba(255, 255, 255, 0.95);
         border-radius: 16px;
@@ -226,7 +336,6 @@ st.markdown("""
         background: rgba(255, 255, 255, 1);
     }
     
-    /* Expander */
     div[data-testid="stExpander"] {
         background: rgba(255, 255, 255, 0.8);
         border-radius: 12px;
@@ -234,7 +343,6 @@ st.markdown("""
         margin-bottom: 16px;
     }
     
-    /* Tabs */
     button[data-baseweb="tab"] {
         font-family: 'DM Sans', sans-serif;
         font-weight: 700;
@@ -243,7 +351,6 @@ st.markdown("""
         font-size: 0.85rem;
     }
     
-    /* Divider */
     hr {
         margin: 2rem 0;
         border: none;
@@ -285,18 +392,13 @@ with st.sidebar:
     st.caption("📂 KNOWLEDGE BASE")
     uploaded_file = st.file_uploader("Upload 'Gold Standard' PDF", type="pdf")
     if uploaded_file and st.button("TRAIN SYSTEM"):
-        with st.spinner("Indexing..."):
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-                tmp_file.write(uploaded_file.read())
-                tmp_file_path = tmp_file.name
-            loader = PyPDFLoader(tmp_file_path)
-            raw_docs = loader.load()
-            text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=500)
-            docs = text_splitter.split_documents(raw_docs)
+        with st.spinner("Indexing with metadata..."):
+            docs, metadata = enhanced_document_indexing(uploaded_file)
             vector_db = Chroma.from_documents(docs, embeddings, persist_directory=PERSIST_DIRECTORY)
             try: vector_db.persist()
             except: pass
-            st.success(f"System Index Updated: {len(docs)} chunks.")
+            st.success(f"✅ System Index Updated: {len(docs)} chunks")
+            st.json(metadata)
 
     st.divider()
     
@@ -331,10 +433,17 @@ with st.sidebar:
                 for f in os.listdir("user_uploads"):
                     os.remove(os.path.join("user_uploads", f))
                 st.rerun()
+    
+    # RAG DEBUG PANEL
+    with st.expander("🔍 RAG DEBUG PANEL"):
+        if 'rag_queries' in st.session_state:
+            st.markdown("### Generated Search Queries")
+            for i, query in enumerate(st.session_state.rag_queries, 1):
+                st.code(f"{i}. {query}")
 
 # --- 6. MAIN INTERFACE ---
 st.title("🎠 DECK Clinic")
-st.caption(f"Built by Olivia Li | PROTOCOL: {doc_type} | CORE: gemini-flash-latest | EMBEDDING: embedding-001 | Langchain") 
+st.caption(f"Built by Olivia Li | PROTOCOL: {doc_type} | CORE: gemini-flash-latest | Advanced RAG + Chain-of-Thought") 
 
 col1, col2 = st.columns([2, 3]) 
 
@@ -347,7 +456,7 @@ with col1:
     
     analyze_btn = st.button("RUN DIAGNOSTIC", type="primary", use_container_width=True)
 
-# 1. Reset Session if NEW file uploaded
+# Reset Session if NEW file uploaded
 if target_pdf and 'last_uploaded' not in st.session_state:
     st.session_state.last_uploaded = target_pdf.name
     st.session_state.analysis_data = None
@@ -359,13 +468,12 @@ elif target_pdf and st.session_state.get('last_uploaded') != target_pdf.name:
     st.session_state.images = None
     st.session_state.session_id = str(uuid.uuid4())[:8]
 
-# 2. Main Logic Flow
+# Main Logic Flow
 if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysis_data')):
     
     # PHASE A: GENERATION
     if not st.session_state.get('analysis_data'):
         
-        # A. File Processing
         session_id = st.session_state.session_id
         safe_filename = f"{session_id}_{target_pdf.name}"
         save_path = os.path.join("user_uploads", safe_filename)
@@ -373,7 +481,7 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
         with open(save_path, "wb") as f:
             f.write(target_pdf.getbuffer())
         
-        # --- CONVERT PDF TO IMAGES with Better Error Handling ---
+        # Convert PDF to Images
         with st.spinner("Processing Vision (Converting Slides)..."):
             try:
                 images = convert_from_path(save_path)
@@ -388,23 +496,28 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
                 """)
                 st.session_state.images = None
         
-        # B. Text Extraction for RAG
+        # Text Extraction
         loader = PyPDFLoader(save_path)
         draft_docs = loader.load()
         draft_text = ""
         for i, doc in enumerate(draft_docs):
             draft_text += f"\n\n--- [PAGE {i+1}] ---\n{doc.page_content}"
 
-        # C. RAG Retrieval
-        with st.spinner("Retrieving Context..."):
+        # ADVANCED RAG Retrieval
+        with st.spinner("Retrieving Context (Advanced RAG)..."):
             try:
                 vector_db = Chroma(persist_directory=PERSIST_DIRECTORY, embedding_function=embeddings)
-                results = vector_db.similarity_search(draft_text, k=3)
-                knowledge_context = "\n".join([doc.page_content for doc in results])
-            except:
+                knowledge_context, search_queries, retrieved_chunks = advanced_rag_pipeline(
+                    draft_text=draft_text,
+                    doc_type=doc_type,
+                    vector_db=vector_db
+                )
+                st.session_state.rag_queries = search_queries
+            except Exception as e:
+                st.warning(f"Advanced RAG failed, using fallback: {e}")
                 knowledge_context = "Standard Top Tech Company Protocols"
 
-        # D. Prompt Construction (YOUR ORIGINAL PROMPT)
+        # Enhanced CoT Prompt
         base_instruction = ""
         if "Strategy" in doc_type:
             base_instruction = "ROLE: Head of Product Manager in Tech Company. FRAMEWORK: Amazon Clarity, McKinsey Structure.BLUF, Extreme Brevity."
@@ -412,72 +525,115 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
             base_instruction = "ROLE: Head of Technical PM. FRAMEWORK: Feasibility checks, Spec strictness."
 
         prompt = f"""
-        {base_instruction}
-        
-        ### GOLD STANDARD CONTEXT:
-        {knowledge_context}
-        
-        ### DRAFT TEXT:
-        {draft_text[:500000]} 
-        
-        ### VISUAL INPUT:
-        I have provided images of the slides. Please analyze them alongside the text.
-        
-        ### INSTRUCTIONS:
-        1. **STEP 1 (HIDDEN BRAINSTORM):** Read the text AND look at the images. Look for logical gaps and visual clutter. Ask yourself: "Does the problem prove the solution?" "Is the data specific?" "Does the chart support the headline?"
-        2. **STEP 2 (SCORING):** Only assign scores AFTER you have written the critique.
-        3. **STEP 3 (EXTRACTION):** Extract the current headlines to identify the existing narrative.
-        4. **STEP 4 (Headline & Narrative Audit):**
-           - Critique the current headlines: Do they tell a story if read in isolation? Are they descriptive or generic?
-           - Suggest a **"Revised Headline Flow"**: A list of rewritten headlines that guide the reader logically from the problem to the solution.
-        5. **STEP 5 (CONTENT RIGOR):** Scan the **body paragraphs, bullet points, and charts** for vague claims (e.g., "significant growth", "optimized synergies").
-       
-        ### EXAMPLES OF GOOD CRITIQUES (FEW-SHOT):
-        
-        input_text: "The KSP is enable Shopee buyers to see an AI generated summary of available promotions and encourage them to buy. In this deck, we will discuss the logic of the input of promotion summary first, then show the front end demo and share the examples of different generated example in words."
-        critique: "1. Grammar: 'is enable' is broken. 2. Weak Metrics: 'encourage to buy' is vague; use 'conversion'. 3. Illogical Flow: The proposed agenda jumps from 'Input Logic' to 'Frontend Demo' before validating the output quality."
-        rewrite: "Objective: Increase Shopee conversion rates by displaying AI-generated promotion summaries. This deck follows a three-part structure: 1. Core Logic (How inputs drive summaries), 2. Output Validation (Reviewing generated text examples), and 3. User Experience (Frontend demo)."
-    
-        input_text: "We will leverage synergies to optimize the flywheel."
-        critique: "Jargon overload. Low clarity. No distinct meaning."
-        rewrite: "We will migrate the Promotion admin to CMT to significantly improve efficiency."
-    
-        input_text: "Slide Title: Strong User Growth. Body: We saw significant uplift in daily active users across various regions due to better performance."
-        critique: "Vague Body Content. The headline is fine, but the bullet point lacks evidence. 'Significant uplift' needs a % or absolute number."
-        rewrite: "Body: DAU increased by 15% (20k users) in SEA and LATAM, driven by a 200ms reduction in app load time."
-        
-        ### JSON STRUCTURE:
-        {{
-            "reasoning_log": "<string: Write a 3-sentence internal analysis of the logic flaws here FIRST.>",
-            "scores": {{
-                "Logic": <int 0-100>,
-                "Clarity": <int 0-100>,
-                "Impact": <int 0-100>
-            }},
-            "executive_summary": "<string: Brutal one-sentence summary based on the reasoning_log>",
-            "narrative_check": {{
-                 "original_headlines": [ "<string: Extracted Headline 1>", "<string: Extracted Headline 2>" ],
-                 "critique": "<string: Critique of the current storytelling flow>",
-                 "revised_headlines": [ "<string: Improved Headline 1>", "<string: Improved Headline 2>" ]
-            }},
-           "section_deep_dive": [
-                {{
-                    "page_number": "<int: The page number extracted from the [PAGE X] marker>",
-                    "target_section": "<string: Quote the specific BULLET POINT or SENTENCE (not the headline)>",
-                    "issue": "<string: Specific critique of the evidence/data OR Visual issue>",
-                    "improved_version": "<string: Rewrite the bullet point to be data-driven and specific>",
-                    "why": "<string: Why this is better>"
-                }}
-            ]
-        }}
-        """
+{base_instruction}
 
-        # E. Generation (Multimodal with Better Error Handling)
+### GOLD STANDARD CONTEXT:
+{knowledge_context}
+
+### DRAFT TEXT:
+{draft_text[:500000]} 
+
+### VISUAL INPUT:
+I have provided images of the slides. Please analyze them alongside the text.
+
+### ANALYSIS FRAMEWORK (THINK STEP-BY-STEP):
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 1: DEEP REASONING (Think Out Loud)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Before scoring, analyze each dimension thoroughly:
+
+**LOGIC REASONING:**
+Step 1a: Identify the main claim/hypothesis in the deck
+Step 1b: List the evidence provided (data, examples, charts)
+Step 1c: Evaluate the logical chain - Does the evidence PROVE the claim? Are there gaps?
+Step 1d: Check for circular reasoning or correlation≠causation errors
+Step 1e: Write your reasoning (3-4 sentences explaining your logic assessment)
+
+**CLARITY REASONING:**
+Step 2a: Count abstract/vague terms (synergies, optimization, leverage, etc.)
+Step 2b: Assess cognitive load - Word count per slide, concepts per slide, jargon
+Step 2c: Test the "10-second rule" - Can an exec understand the slide quickly?
+Step 2d: Check for visual clutter
+Step 2e: Write your reasoning (3-4 sentences explaining clarity assessment)
+
+**IMPACT REASONING:**
+Step 3a: Identify the "so what?" moment
+Step 3b: Check for specificity - Vague vs concrete goals
+Step 3c: Assess emotional resonance - Is there urgency? Clear problem?
+Step 3d: Write your reasoning (3-4 sentences explaining impact assessment)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 2: SCORING (Based on Your Reasoning Above)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NOW, based on the reasoning you just wrote:
+- Logic Score: 0-100 (Is the argument sound?)
+- Clarity Score: 0-100 (Can a busy exec understand it?)
+- Impact Score: 0-100 (Will this change minds?)
+
+**CRITICAL:** Your scores MUST align with your reasoning.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 3: EXTRACTION & RECONSTRUCTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. **EXTRACTION:** Extract the current headlines to identify the existing narrative.
+4. **Headline & Narrative Audit:**
+   - Critique the current headlines: Do they tell a story if read in isolation?
+   - Suggest a **"Revised Headline Flow"**: Rewritten headlines that guide logically from problem to solution.
+5. **CONTENT RIGOR:** Scan body paragraphs, bullets, charts for vague claims.
+
+### EXAMPLES OF GOOD CRITIQUES (FEW-SHOT):
+
+input_text: "The KSP is enable Shopee buyers to see an AI generated summary of available promotions and encourage them to buy. In this deck, we will discuss the logic of the input of promotion summary first, then show the front end demo and share the examples of different generated example in words."
+critique: "1. Grammar: 'is enable' is broken. 2. Weak Metrics: 'encourage to buy' is vague; use 'conversion'. 3. Illogical Flow: The proposed agenda jumps from 'Input Logic' to 'Frontend Demo' before validating the output quality."
+rewrite: "Objective: Increase Shopee conversion rates by displaying AI-generated promotion summaries. This deck follows a three-part structure: 1. Core Logic (How inputs drive summaries), 2. Output Validation (Reviewing generated text examples), and 3. User Experience (Frontend demo)."
+
+input_text: "We will leverage synergies to optimize the flywheel."
+critique: "Jargon overload. Low clarity. No distinct meaning."
+rewrite: "We will migrate the Promotion admin to CMT to significantly improve efficiency."
+
+input_text: "Slide Title: Strong User Growth. Body: We saw significant uplift in daily active users across various regions due to better performance."
+critique: "Vague Body Content. The headline is fine, but the bullet point lacks evidence. 'Significant uplift' needs a % or absolute number."
+rewrite: "Body: DAU increased by 15% (20k users) in SEA and LATAM, driven by a 200ms reduction in app load time."
+
+### JSON STRUCTURE (ENHANCED WITH REASONING):
+{{
+    "chain_of_thought": {{
+        "logic_reasoning": "<string: Your 3-4 sentence reasoning from PHASE 1>",
+        "clarity_reasoning": "<string: Your 3-4 sentence reasoning from PHASE 1>",
+        "impact_reasoning": "<string: Your 3-4 sentence reasoning from PHASE 1>"
+    }},
+    "scores": {{
+        "Logic": <int 0-100>,
+        "Clarity": <int 0-100>,
+        "Impact": <int 0-100>
+    }},
+    "executive_summary": "<string: Brutal one-sentence summary based on the chain_of_thought>",
+    "narrative_check": {{
+         "original_headlines": [ "<string: Extracted Headline 1>", "<string: Extracted Headline 2>" ],
+         "critique": "<string: Critique of the current storytelling flow>",
+         "revised_headlines": [ "<string: Improved Headline 1>", "<string: Improved Headline 2>" ]
+    }},
+   "section_deep_dive": [
+        {{
+            "page_number": "<int: The page number>",
+            "target_section": "<string: Quote the specific BULLET POINT or SENTENCE>",
+            "issue": "<string: Specific critique>",
+            "improved_version": "<string: Rewrite>",
+            "why": "<string: Why this is better>"
+        }}
+    ]
+}}
+"""
+
+        # Generation
         with st.spinner("Processing Logic & Vision..."):
             try:
                 model = genai.GenerativeModel('gemini-flash-latest')
                 
-                # Build content list based on whether images are available
                 content_list = [prompt]
                 if st.session_state.images:
                     content_list.extend(st.session_state.images)
@@ -487,11 +643,9 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
                     generation_config={"response_mime_type": "application/json"}
                 )
                 
-                # Parse JSON with error handling
                 try:
                     st.session_state.analysis_data = json.loads(response.text)
                 except json.JSONDecodeError:
-                    # Try cleaning up markdown fences
                     cleaned = response.text.replace("```json", "").replace("```", "").strip()
                     st.session_state.analysis_data = json.loads(cleaned)
                 
@@ -514,7 +668,6 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
         st.markdown(f"### SCORECARD (ID: `{st.session_state.session_id}`)")
         s1, s2, s3 = st.columns(3)
         
-        # Enhanced Score Display with Context
         logic_score = data.get('scores', {}).get('Logic', 0)
         clarity_score = data.get('scores', {}).get('Clarity', 0)
         impact_score = data.get('scores', {}).get('Impact', 0)
@@ -533,6 +686,40 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
             st.metric("IMPACT", f"{impact_score}")
             tier, color, advice = get_score_context(impact_score)
             st.markdown(f'<div class="score-badge" style="background-color: {color}; color: white;">{tier}</div>', unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # CHAIN OF THOUGHT DISPLAY
+    with st.expander("🧠 SEE AI'S REASONING (Chain-of-Thought)", expanded=False):
+        st.markdown("### How the AI Arrived at These Scores")
+        
+        cot_data = data.get('chain_of_thought', {})
+        
+        st.markdown("#### 🔍 Logic Assessment")
+        st.info(cot_data.get('logic_reasoning', 'No reasoning provided'))
+        st.metric("Logic Score", logic_score)
+        
+        st.divider()
+        
+        st.markdown("#### 📖 Clarity Assessment")
+        st.info(cot_data.get('clarity_reasoning', 'No reasoning provided'))
+        st.metric("Clarity Score", clarity_score)
+        
+        st.divider()
+        
+        st.markdown("#### 💥 Impact Assessment")
+        st.info(cot_data.get('impact_reasoning', 'No reasoning provided'))
+        st.metric("Impact Score", impact_score)
+        
+        st.divider()
+        
+        avg_score = (logic_score + clarity_score + impact_score) / 3
+        if avg_score >= 75:
+            st.success("✅ High confidence in analysis - reasoning is consistent")
+        elif avg_score >= 50:
+            st.warning("⚠️ Moderate confidence - some areas need attention")
+        else:
+            st.error("🚨 Low scores detected - significant improvements recommended")
     
     st.divider()
     
@@ -556,7 +743,7 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
     st.divider()
     st.info(f"**EXECUTIVE SUMMARY:** {data.get('executive_summary', 'No summary generated.')}")
     
-    # TABS RENDER
+    # TABS
     tab1, tab2 = st.tabs(["STORY FLOW", "🔬 DEEP DIVE & REWRITES"])
     
     with tab1:
@@ -572,7 +759,7 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
             st.caption("🟢 OPTIMIZED FLOW")
             for line in nav_data.get('revised_headlines', []): st.markdown(f"**• {line}**")
         
-        if data.get('scores', {}).get('Logic', 0) < 75: st.error("⚠️ NARRATIVE THREAD BROKEN")
+        if logic_score < 75: st.error("⚠️ NARRATIVE THREAD BROKEN")
         else: st.success("✅ NARRATIVE THREAD STABLE")
 
     with tab2:
@@ -590,7 +777,6 @@ if (target_pdf and analyze_btn) or (target_pdf and st.session_state.get('analysi
                 if len(header_text) > 60: header_text = header_text[:150]
                 st.markdown(f"##### {header_text}")
                 
-                # Show slide image if available
                 if images:
                     try:
                         p_idx = int(page_num) - 1
