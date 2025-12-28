@@ -738,12 +738,70 @@ NOW, based on the reasoning you just wrote:
 **CRITICAL:** Your scores MUST align with your reasoning.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ CRITICAL: COMPANY STANDARD DECK STRUCTURE (MUST FOLLOW)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+When revising headlines, you MUST follow this exact structure:
+
+**MANDATORY FORMAT:**
+1. "Executive Summary | [Topic]" (Pages 1-2)
+2. "Problem | [Issue]" (Pages 3-4, optional)
+3. "Topic N | [Action]" (Pages 5+, numbered sequentially)
+4. "Appendix | [Data]" (Final pages)
+
+**STRICT RULES:**
+- Always use the pipe separator: "Section Type | Content"
+- Only use these section types: Executive Summary, Problem, Topic N, Proposal N, Appendix
+- Number topics sequentially: Topic 1, Topic 2, Topic 3...
+- DO NOT create custom section names like "Direction", "Pricing", "Execution"
+- DO NOT use BLUF-style one-liners as section headers
+- Content after the pipe should be specific and action-oriented
+
+**CORRECT FORMAT EXAMPLES:**
+✓ "Executive Summary | Deals MVP Launch Strategy"
+✓ "Problem | Low Conversion Rate (2.3% vs Industry 5%)"
+✓ "Topic 1 | Four-Way A/B Test Design for Price Optimization"
+✓ "Topic 2 | Product Recommendation Model (PRM) for Top 500 SKUs"
+✓ "Topic 3 | MVP Launch Timeline (L14 Market)"
+✓ "Appendix | Detailed Market Segmentation Analysis"
+
+**INCORRECT - DO NOT DO THIS:**
+✗ "BLUF: Deals MVP Approval - Launch 4-Way ABT"
+✗ "Direction: 4-Way ABT Design"
+✗ "Pricing: Tiered PRM Strategy"
+✗ "Execution: Launch Plan"
+✗ "Let's Optimize Deals Performance"
+
+If the original deck doesn't follow this structure, YOUR JOB is to restructure it properly.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PHASE 3: EXTRACTION & RECONSTRUCTION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-3. Extract the current headlines
-4. Critique the narrative flow
-5. Scan for vague claims
+**Step 3A: Extract Current Headlines**
+List the exact current slide titles as they appear in the deck.
+
+**Step 3B: Check Structure Compliance**
+- Does the deck follow the company standard structure?
+- Which required sections are missing? (Executive Summary? Problem? Topics? Appendix?)
+- Are there non-standard section types? (Direction, Pricing, Execution, etc.)
+- Are Topics/Proposals numbered sequentially?
+
+**Step 3C: Critique the Narrative**
+Evaluate whether the story flows logically:
+- Does it follow problem → solution → implementation → appendix?
+- Are the headlines descriptive enough?
+- Do they tell a story when read in sequence?
+
+**Step 3D: Restructure Headlines**
+Rewrite ALL headlines to follow the MANDATORY FORMAT above.
+- First slide must be "Executive Summary | ..."
+- Add "Problem | ..." if the deck addresses a problem
+- Convert all main sections to "Topic N | ..." format (numbered)
+- Final slides become "Appendix | ..."
+
+**Step 3E: Scan for Vague Claims**
+Check body paragraphs, bullets, charts for vague language.
 
 ### EXAMPLES OF GOOD CRITIQUES:
 
@@ -765,9 +823,21 @@ rewrite: "Objective: Increase Shopee conversion rates by displaying AI-generated
     }},
     "executive_summary": "<string>",
     "narrative_check": {{
-         "original_headlines": ["<string>"],
-         "critique": "<string>",
-         "revised_headlines": ["<string>"]
+         "original_headlines": [
+             "<string: Extract EXACTLY as written, including page numbers if shown>"
+         ],
+         "structure_compliance": {{
+             "follows_company_standard": <boolean: true if follows the mandatory format>,
+             "missing_sections": ["<string: e.g., Executive Summary, Problem, Appendix>"],
+             "non_standard_sections": ["<string: e.g., Direction, Pricing, Execution>"],
+             "structure_issues": "<string: Describe what's wrong with current structure>"
+         }},
+         "critique": "<string: Critique BOTH content flow AND structure compliance>",
+         "revised_headlines": [
+             "<string: MUST use format 'Section Type | Content'>",
+             "<string: Example: 'Executive Summary | Main Topic'>",
+             "<string: Example: 'Topic 1 | Specific Action'>"
+         ]
     }},
    "section_deep_dive": [
         {{
@@ -779,6 +849,13 @@ rewrite: "Objective: Increase Shopee conversion rates by displaying AI-generated
         }}
     ]
 }}
+
+**CRITICAL FINAL CHECK:**
+Before returning JSON, verify that:
+1. EVERY item in "revised_headlines" uses the "Section Type | Content" format
+2. Section types are ONLY: Executive Summary, Problem, Topic N, Proposal N, Appendix
+3. Topics are numbered sequentially (Topic 1, Topic 2, Topic 3...)
+4. No custom section names like "Direction", "Pricing", "Execution" appear
 """
 
         # Generation
@@ -886,23 +963,92 @@ rewrite: "Objective: Increase Shopee conversion rates by displaying AI-generated
     
     with tab1:
         nav_data = data.get('narrative_check', {})
+        structure_data = nav_data.get('structure_compliance', {})
         
-        st.markdown("#### Headline & Story Analysis")
+        st.markdown("#### Narrative & Structure Analysis")
+        
+        # Structure Compliance Check
+        if not structure_data.get('follows_company_standard', True):
+            st.error("""
+            ⚠️ **Deck Does Not Follow Company Structure Standard**
+            
+            Required format: Executive Summary → Problem (optional) → Topics (numbered) → Appendix
+            """)
+            
+            col_check1, col_check2 = st.columns(2)
+            
+            with col_check1:
+                missing = structure_data.get('missing_sections', [])
+                if missing:
+                    st.markdown("**❌ Missing Sections:**")
+                    for section in missing:
+                        st.markdown(f"- {section}")
+            
+            with col_check2:
+                non_standard = structure_data.get('non_standard_sections', [])
+                if non_standard:
+                    st.markdown("**⚠️ Non-Standard Sections Found:**")
+                    for section in non_standard:
+                        st.markdown(f"- {section}")
+            
+            if structure_data.get('structure_issues'):
+                st.info(f"**Issue:** {structure_data['structure_issues']}")
+        else:
+            st.success("✅ Deck follows company structure standard")
+        
+        # Show company standard reference
+        with st.expander("📋 View Company Structure Standard"):
+            st.markdown("""
+            ### Required Deck Structure
+            
+            All strategy decks must follow this format:
+            
+            **1. Executive Summary (Pages 1-2)**
+            - Format: `Executive Summary | [Key Topic]`
+            - Example: *"Executive Summary | Q4 Deals Strategy for SEA Market"*
+            
+            **2. Problem Identification (Optional, Pages 3-4)**
+            - Format: `Problem | [Specific Issue]`
+            - Example: *"Problem | Low Conversion on Featured Deals (2.3% vs 5% Target)"*
+            
+            **3. Topics/Proposals (Pages 5+)**
+            - Format: `Topic N | [Action]` or `Proposal N | [Solution]`
+            - Examples:
+                - *"Topic 1 | Four-Way A/B Test for Price Optimization"*
+                - *"Topic 2 | PRM Implementation Timeline"*
+                - *"Topic 3 | Success Metrics & KPIs"*
+            
+            **4. Appendix (Final pages)**
+            - Format: `Appendix | [Supporting Info]`
+            - Example: *"Appendix | Market Research Data"*
+            """)
+        
+        st.markdown("---")
+        
+        # Narrative Critique
         st.markdown(f"> {nav_data.get('critique', 'No critique available.')}")
         
         st.markdown("---")
         
+        # Original vs Optimized
         col_a, col_b = st.columns(2)
         
         with col_a:
-            st.markdown("**🔴 Original Flow**")
+            st.markdown("**🔴 Original Headlines**")
             for line in nav_data.get('original_headlines', []):
-                st.markdown(f"• {line}")
+                st.text(f"• {line}")
         
         with col_b:
-            st.markdown("**🟢 Optimized Flow**")
+            st.markdown("**🟢 Restructured (Company Standard)**")
             for line in nav_data.get('revised_headlines', []):
-                st.markdown(f"• **{line}**")
+                # Highlight the section type for better readability
+                if "|" in line:
+                    section_type, content = line.split("|", 1)
+                    st.markdown(f"• **{section_type.strip()}** |{content}")
+                else:
+                    st.markdown(f"• **{line}**")
+        
+        st.markdown("---")
         
         if logic_score < 75:
             st.error("⚠️ Narrative thread has gaps")
