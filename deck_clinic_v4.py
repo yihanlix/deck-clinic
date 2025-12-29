@@ -744,15 +744,15 @@ NOW, based on the reasoning you just wrote:
 When revising headlines, you MUST follow this exact structure:
 
 **MANDATORY FORMAT:**
-1. "Executive Summary | [Topic]" (Pages 1-2)
+1. "Executive Summary | [Proposal]" (Pages 1-2)
 2. "Problem | [Issue]" (Pages 3-4, optional)
-3. "Topic N | [Action]" (Pages 5+, numbered sequentially)
+3. "Proposal N | [Action]" (Pages 5+, numbered sequentially)
 4. "Appendix | [Data]" (Final pages)
 
 **STRICT RULES:**
 - Always use the pipe separator: "Section Type | Content"
-- Only use these section types: Executive Summary, Problem, Topic N, Proposal N, Appendix
-- Number topics sequentially: Topic 1, Topic 2, Topic 3...
+- Only use these section types: Executive Summary, Problem, Proposal N, Proposal N, Appendix
+- Number proposals sequentially: Proposal 1, Proposal 2, Proposal 3...
 - DO NOT create custom section names like "Direction", "Pricing", "Execution"
 - DO NOT use BLUF-style one-liners as section headers
 - Content after the pipe should be specific and action-oriented
@@ -760,9 +760,9 @@ When revising headlines, you MUST follow this exact structure:
 **CORRECT FORMAT EXAMPLES:**
 ✓ "Executive Summary | Deals MVP Launch Strategy"
 ✓ "Problem | Low Conversion Rate (2.3% vs Industry 5%)"
-✓ "Topic 1 | Four-Way A/B Test Design for Price Optimization"
-✓ "Topic 2 | Product Recommendation Model (PRM) for Top 500 SKUs"
-✓ "Topic 3 | MVP Launch Timeline (L14 Market)"
+✓ "Proposal 1 | Four-Way A/B Test Design for Price Optimization"
+✓ "Proposal 2 | Product Recommendation Model (PRM) for Top 500 SKUs"
+✓ "Proposal 3 | MVP Launch Timeline (L14 Market)"
 ✓ "Appendix | Detailed Market Segmentation Analysis"
 
 **INCORRECT - DO NOT DO THIS:**
@@ -783,9 +783,9 @@ List the exact current slide titles as they appear in the deck.
 
 **Step 3B: Check Structure Compliance**
 - Does the deck follow the company standard structure?
-- Which required sections are missing? (Executive Summary? Problem? Topics? Appendix?)
+- Which required sections are missing? (Executive Summary? Problem? Proposals? Appendix?)
 - Are there non-standard section types? (Direction, Pricing, Execution, etc.)
-- Are Topics/Proposals numbered sequentially?
+- Are Proposals/Proposals numbered sequentially?
 
 **Step 3C: Critique the Narrative**
 Evaluate whether the story flows logically:
@@ -797,7 +797,7 @@ Evaluate whether the story flows logically:
 Rewrite ALL headlines to follow the MANDATORY FORMAT above.
 - First slide must be "Executive Summary | ..."
 - Add "Problem | ..." if the deck addresses a problem
-- Convert all main sections to "Topic N | ..." format (numbered)
+- Convert all main sections to "Proposal N | ..." format (numbered)
 - Final slides become "Appendix | ..."
 
 **Step 3E: Scan for Vague Claims**
@@ -835,8 +835,8 @@ rewrite: "Objective: Increase Shopee conversion rates by displaying AI-generated
          "critique": "<string: Critique BOTH content flow AND structure compliance>",
          "revised_headlines": [
              "<string: MUST use format 'Section Type | Content'>",
-             "<string: Example: 'Executive Summary | Main Topic'>",
-             "<string: Example: 'Topic 1 | Specific Action'>"
+             "<string: Example: 'Executive Summary | Main Propsoal'>",
+             "<string: Example: 'Propsoal 1 | Specific Action'>"
          ]
     }},
    "section_deep_dive": [
@@ -853,8 +853,8 @@ rewrite: "Objective: Increase Shopee conversion rates by displaying AI-generated
 **CRITICAL FINAL CHECK:**
 Before returning JSON, verify that:
 1. EVERY item in "revised_headlines" uses the "Section Type | Content" format
-2. Section types are ONLY: Executive Summary, Problem, Topic N, Proposal N, Appendix
-3. Topics are numbered sequentially (Topic 1, Topic 2, Topic 3...)
+2. Section types are ONLY: Executive Summary, Problem, Proposal N, Proposal N, Appendix
+3. Proposals are numbered sequentially (Proposal 1, Proposal 2, Proposal 3...)
 4. No custom section names like "Direction", "Pricing", "Execution" appear
 """
 
@@ -972,7 +972,7 @@ Before returning JSON, verify that:
             st.error("""
             ⚠️ **Deck Does Not Follow Company Structure Standard**
             
-            Required format: Executive Summary → Problem (optional) → Topics (numbered) → Appendix
+            Required format: Executive Summary → Problem (optional) → Proposals (numbered) → Appendix
             """)
             
             col_check1, col_check2 = st.columns(2)
@@ -1004,19 +1004,19 @@ Before returning JSON, verify that:
             All strategy decks must follow this format:
             
             **1. Executive Summary (Pages 1-2)**
-            - Format: `Executive Summary | [Key Topic]`
+            - Format: `Executive Summary | [Key Proposal]`
             - Example: *"Executive Summary | Q4 Deals Strategy for SEA Market"*
             
             **2. Problem Identification (Optional, Pages 3-4)**
             - Format: `Problem | [Specific Issue]`
             - Example: *"Problem | Low Conversion on Featured Deals (2.3% vs 5% Target)"*
             
-            **3. Topics/Proposals (Pages 5+)**
-            - Format: `Topic N | [Action]` or `Proposal N | [Solution]`
+            **3. Proposals/Proposals (Pages 5+)**
+            - Format: `Proposal N | [Action]` or `Proposal N | [Solution]`
             - Examples:
-                - *"Topic 1 | Four-Way A/B Test for Price Optimization"*
-                - *"Topic 2 | PRM Implementation Timeline"*
-                - *"Topic 3 | Success Metrics & KPIs"*
+                - *"Proposal 1 | Four-Way A/B Test for Price Optimization"*
+                - *"Proposal 2 | PRM Implementation Timeline"*
+                - *"Proposal 3 | Success Metrics & KPIs"*
             
             **4. Appendix (Final pages)**
             - Format: `Appendix | [Supporting Info]`
